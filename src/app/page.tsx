@@ -3,6 +3,7 @@
 import React from "react";
 import CollegeSportsManager from "@/components/CollegeSportsManager";
 import UUIDGenerator from "@/components/UUIDGenerator";
+import CollegeSportsManagerInput from "@/components/CollegeSportsManagerInput";
 
 export default function Home() {
   return (

@@ -167,11 +167,6 @@ const CollegeSportsManager = () => {
   const [autoSaveStatus, setAutoSaveStatus] = useState("saved");
   const [openDialogs, setOpenDialogs] = useState({});
   const [validationErrors, setValidationErrors] = useState({});
-  const [bulkInputText, setBulkInputText] = useState("");
-  const [aiResponseText, setAiResponseText] = useState("");
-  const [isProcessingAI, setIsProcessingAI] = useState(false);
-  const [apiKey, setApiKey] = useState("");
-  const [showBulkInput, setShowBulkInput] = useState(null);
   const fileInputRef = useRef(null);
 
   const currentCollege = colleges[currentIndex];
@@ -216,120 +211,6 @@ const CollegeSportsManager = () => {
     return parts.join(" ");
   };
 
-  // Enhanced AI processing with improved prompt and JSON parsing
-  const processWithAI = async (sportIndex, staffIndex) => {
-    if (!bulkInputText) return;
-
-    setIsProcessingAI(true);
-    setAiResponseText("Processing...");
-
-    const API_KEY = "AIzaSyASsPYfI03YRzvVGNibVarkPFPGgXP0rSQ";
-    const model = "gemini-2.0-flash-exp";
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${API_KEY}`;
-
-    const prompt = `You are a helpful assistant that extracts staff information from a given text. The user will provide a block of text containing staff names, roles, emails, and phone numbers. Your task is to extract this information and format it as a JSON array of objects. Each object should have the properties 'staffTitle', 'staffFirstName', 'staffMiddleName', 'staffLastName', 'staffEmail', 'staffPhoneNumber'. The 'staffPhoneNumber' should be formatted as "(123) 456-7890". If a piece of information is not present, use null.
-
-Parse the following text and extract staff information into a JSON array with these exact fields:
-[
-{
-  "staffTitle": "extracted title or null",
-  "staffFirstName": "extracted first name or null", 
-  "staffMiddleName": "extracted middle name or null",
-  "staffLastName": "extracted last name or null",
-  "staffEmail": "extracted email or null",
-  "staffPhoneNumber": "extracted phone number formatted as (123) 456-7890 or null"
-}
-]
-
-Text to parse: ${bulkInputText}
-
-Return only the JSON array, no other text.`;
-
-    const requestBody = {
-      contents: [
-        {
-          parts: [{ text: prompt }],
-        },
-      ],
-    };
-
-    try {
-      const response = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(requestBody),
-      });
-
-      const data = await response.json();
-      if (response.ok) {
-        const generatedText = data.candidates[0].content.parts[0].text;
-        setAiResponseText(generatedText);
-
-        // Try to parse the JSON and populate the form
-        try {
-          const jsonMatch = generatedText.match(/\[[\s\S]*\]/);
-          if (jsonMatch) {
-            const parsedData = JSON.parse(jsonMatch[0]);
-
-            // If it's an array, take the first item, otherwise use the object directly
-            const staffData = Array.isArray(parsedData)
-              ? parsedData[0]
-              : parsedData;
-
-            if (staffData) {
-              // Update editing staff with AI-parsed data
-              const updatedStaff = {
-                ...editingStaff,
-                staffTitle: staffData.staffTitle || "",
-                staffFirstName: staffData.staffFirstName || "",
-                staffMiddleName: staffData.staffMiddleName || "",
-                staffLastName: staffData.staffLastName || "",
-                staffEmail: staffData.staffEmail || "",
-                staffPhoneNumber: staffData.staffPhoneNumber || "",
-              };
-
-              // Generate staff name
-              updatedStaff.staffName = generateStaffName(
-                updatedStaff.staffFirstName,
-                updatedStaff.staffMiddleName,
-                updatedStaff.staffLastName,
-              );
-
-              setEditingStaff(updatedStaff);
-
-              // If there are multiple staff members in the array, you could handle them here
-              if (Array.isArray(parsedData) && parsedData.length > 1) {
-                setAiResponseText(
-                  (prev) =>
-                    prev +
-                    "\n\nNote: Multiple staff members detected. Only the first one was populated. You can process others separately.",
-                );
-              }
-            }
-          }
-        } catch (parseError) {
-          console.error("Error parsing AI response:", parseError);
-          setAiResponseText(
-            (prev) =>
-              prev +
-              "\n\nNote: Could not automatically populate form fields, but you can copy the data manually.",
-          );
-        }
-      } else {
-        setAiResponseText(`Error from AI: ${data.error.message}`);
-      }
-    } catch (error) {
-      console.error("Error calling Gemini API:", error);
-      setAiResponseText(
-        "Failed to process with AI. Please check your network or API key.",
-      );
-    } finally {
-      setIsProcessingAI(false);
-    }
-  };
-
   // Import JSON
   const handleFileImport = (event) => {
     const file = event.target.files[0];
@@ -368,9 +249,6 @@ Return only the JSON array, no other text.`;
       setIsEditing(null);
       setEditingStaff({});
       setOpenDialogs({});
-      setShowBulkInput(null);
-      setBulkInputText("");
-      setAiResponseText("");
     }
   };
 
@@ -380,9 +258,6 @@ Return only the JSON array, no other text.`;
       setIsEditing(null);
       setEditingStaff({});
       setOpenDialogs({});
-      setShowBulkInput(null);
-      setBulkInputText("");
-      setAiResponseText("");
     }
   };
 
@@ -422,13 +297,6 @@ Return only the JSON array, no other text.`;
     const updatedColleges = [...colleges];
     updatedColleges[currentIndex].sports[sportIndex].staff.push(newStaff);
     setColleges(updatedColleges);
-
-    // Automatically enter edit mode and show bulk input
-    const staffIndex =
-      updatedColleges[currentIndex].sports[sportIndex].staff.length - 1;
-    setIsEditing(`${sportIndex}-${staffIndex}`);
-    setEditingStaff({ ...newStaff });
-    setShowBulkInput(`${sportIndex}-${staffIndex}`);
   };
 
   // Set staff visibility preset
@@ -448,6 +316,7 @@ Return only the JSON array, no other text.`;
       staff.canShowTitle = false;
       staff.canShowName = false;
       staff.canShowContact = false;
+      // staffActive remains as is for manual selection
     }
 
     setColleges(updatedColleges);
@@ -491,10 +360,6 @@ Return only the JSON array, no other text.`;
     setIsEditing(`${sportIndex}-${staffIndex}`);
     setEditingStaff({ ...currentCollege.sports[sportIndex].staff[staffIndex] });
     setValidationErrors({});
-    // Automatically show bulk input dialog when editing
-    setShowBulkInput(`${sportIndex}-${staffIndex}`);
-    setBulkInputText("");
-    setAiResponseText("");
   };
 
   // Save staff changes
@@ -531,9 +396,6 @@ Return only the JSON array, no other text.`;
     setIsEditing(null);
     setEditingStaff({});
     setValidationErrors({});
-    setShowBulkInput(null);
-    setBulkInputText("");
-    setAiResponseText("");
   };
 
   // Cancel staff edit
@@ -541,9 +403,6 @@ Return only the JSON array, no other text.`;
     setIsEditing(null);
     setEditingStaff({});
     setValidationErrors({});
-    setShowBulkInput(null);
-    setBulkInputText("");
-    setAiResponseText("");
   };
 
   // Delete staff member
@@ -1218,7 +1077,7 @@ Return only the JSON array, no other text.`;
                                       )
                                     }
                                     className="min-w-24"
-                                    placeholder="Title"
+                                    placeholder="Head Coach"
                                   />
                                 ) : (
                                   staff.staffTitle || "-"
@@ -1235,7 +1094,7 @@ Return only the JSON array, no other text.`;
                                       )
                                     }
                                     className="min-w-24"
-                                    placeholder="First"
+                                    placeholder="John"
                                   />
                                 ) : (
                                   staff.staffFirstName || "-"
@@ -1252,7 +1111,7 @@ Return only the JSON array, no other text.`;
                                       )
                                     }
                                     className="min-w-24"
-                                    placeholder="Middle"
+                                    placeholder="M"
                                   />
                                 ) : (
                                   staff.staffMiddleName || "-"
@@ -1269,7 +1128,7 @@ Return only the JSON array, no other text.`;
                                       )
                                     }
                                     className="min-w-24"
-                                    placeholder="Last"
+                                    placeholder="Smith"
                                   />
                                 ) : (
                                   staff.staffLastName || "-"
@@ -1286,7 +1145,7 @@ Return only the JSON array, no other text.`;
                                       )
                                     }
                                     className="min-w-32"
-                                    placeholder="john@college.edu"
+                                    placeholder="john.smith@college.edu"
                                     error={validationErrors.email}
                                   />
                                 ) : (
@@ -1304,7 +1163,7 @@ Return only the JSON array, no other text.`;
                                       )
                                     }
                                     className="min-w-28"
-                                    placeholder="123-123-4567"
+                                    placeholder="(555) 123-4567"
                                     error={validationErrors.phone}
                                   />
                                 ) : (
@@ -1364,73 +1223,6 @@ Return only the JSON array, no other text.`;
                     </tbody>
                   </table>
                 </div>
-
-                {/* Enhanced Bulk Input Section with AI Processing */}
-                {(showBulkInput ===
-                  `${sportIndex}-${sport.staff?.length - 1}` ||
-                  (isEditing && showBulkInput === isEditing)) && (
-                  <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                    <div className="flex items-center justify-between mb-3">
-                      <h4 className="font-semibold text-blue-900">
-                        Quick Staff Entry with AI Processing
-                      </h4>
-                      <Button
-                        onClick={() =>
-                          processWithAI(
-                            sportIndex,
-                            isEditing
-                              ? parseInt(isEditing.split("-")[1])
-                              : sport.staff?.length - 1,
-                          )
-                        }
-                        disabled={!bulkInputText || isProcessingAI}
-                        size="lg"
-                      >
-                        {isProcessingAI ? "Processing..." : "Process with AI"}
-                      </Button>
-                    </div>
-
-                    {/* Two-column layout for input and output */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Paste Staff Information
-                        </label>
-                        <textarea
-                          value={bulkInputText}
-                          onChange={(e) => setBulkInputText(e.target.value)}
-                          placeholder="Paste staff information here (e.g., 'John Smith, Head Coach, john.smith@college.edu, (555) 123-4567')..."
-                          className="w-full h-72 p-3 border border-gray-300 rounded-md resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          AI Response
-                        </label>
-                        <textarea
-                          value={aiResponseText}
-                          readOnly
-                          placeholder="AI response will appear here..."
-                          className="w-full h-72 p-3 border border-gray-300 rounded-md resize-none bg-gray-50 text-sm"
-                        />
-                      </div>
-                    </div>
-
-                    <p className="text-xs text-gray-600 mt-2">
-                      Paste any staff information and AI will automatically
-                      extract and populate the form fields above. The AI can
-                      parse names, titles, emails, and phone numbers from
-                      various text formats.
-                      <br />
-                      <span className="font-medium">Tip:</span> Press{" "}
-                      <kbd className="px-1 w-[50px] h-[80px] py-0.5 bg-gray-200 rounded text-xs">
-                        Ctrl+Q
-                      </kbd>{" "}
-                      to quickly process with AI.
-                    </p>
-                  </div>
-                )}
               </CardContent>
             </Card>
           ))}

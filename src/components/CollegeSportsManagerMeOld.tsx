@@ -491,10 +491,6 @@ Return only the JSON array, no other text.`;
     setIsEditing(`${sportIndex}-${staffIndex}`);
     setEditingStaff({ ...currentCollege.sports[sportIndex].staff[staffIndex] });
     setValidationErrors({});
-    // Automatically show bulk input dialog when editing
-    setShowBulkInput(`${sportIndex}-${staffIndex}`);
-    setBulkInputText("");
-    setAiResponseText("");
   };
 
   // Save staff changes
@@ -1366,9 +1362,8 @@ Return only the JSON array, no other text.`;
                 </div>
 
                 {/* Enhanced Bulk Input Section with AI Processing */}
-                {(showBulkInput ===
-                  `${sportIndex}-${sport.staff?.length - 1}` ||
-                  (isEditing && showBulkInput === isEditing)) && (
+                {showBulkInput ===
+                  `${sportIndex}-${sport.staff?.length - 1}` && (
                   <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
                     <div className="flex items-center justify-between mb-3">
                       <h4 className="font-semibold text-blue-900">
@@ -1376,12 +1371,7 @@ Return only the JSON array, no other text.`;
                       </h4>
                       <Button
                         onClick={() =>
-                          processWithAI(
-                            sportIndex,
-                            isEditing
-                              ? parseInt(isEditing.split("-")[1])
-                              : sport.staff?.length - 1,
-                          )
+                          processWithAI(sportIndex, sport.staff?.length - 1)
                         }
                         disabled={!bulkInputText || isProcessingAI}
                         size="lg"
