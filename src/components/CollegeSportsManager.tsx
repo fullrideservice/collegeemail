@@ -1,0 +1,1248 @@
+import React, { useState, useEffect, useRef } from "react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Upload,
+  Download,
+  Plus,
+  Edit2,
+  Trash2,
+  Save,
+  X,
+  Eye,
+  EyeOff,
+  Settings,
+  Check,
+} from "lucide-react";
+
+const Button = ({
+  onClick,
+  disabled,
+  variant = "default",
+  size = "default",
+  className = "",
+  children,
+}) => {
+  const baseClasses =
+    "inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-background";
+
+  const variants = {
+    default:
+      "bg-primary text-primary-foreground hover:bg-primary/90 bg-blue-600 text-white hover:bg-blue-700",
+    destructive:
+      "bg-destructive text-destructive-foreground hover:bg-destructive/90 bg-red-600 text-white hover:bg-red-700",
+    outline:
+      "border border-input hover:bg-accent hover:text-accent-foreground border-gray-300 hover:bg-gray-50",
+    secondary:
+      "bg-secondary text-secondary-foreground hover:bg-secondary/80 bg-gray-100 text-gray-900 hover:bg-gray-200",
+    ghost: "hover:bg-accent hover:text-accent-foreground hover:bg-gray-100",
+    link: "underline-offset-4 hover:underline text-primary text-blue-600",
+    success: "bg-green-600 text-white hover:bg-green-700",
+    warning: "bg-yellow-600 text-white hover:bg-yellow-700",
+  };
+
+  const sizes = {
+    default: "h-10 py-2 px-4",
+    sm: "h-9 px-3 rounded-md",
+    lg: "h-11 px-8 rounded-md",
+    icon: "h-10 w-10",
+    xs: "h-8 px-2 text-xs",
+  };
+
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={`${baseClasses} ${variants[variant]} ${sizes[size]} ${className}`}
+    >
+      {children}
+    </button>
+  );
+};
+
+const Input = ({
+  value,
+  onChange,
+  placeholder,
+  className = "",
+  error,
+  ...props
+}) => (
+  <div className="w-full">
+    <input
+      type="text"
+      value={value}
+      onChange={onChange}
+      placeholder={placeholder}
+      className={`flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${
+        error
+          ? "border-red-500 focus:border-red-500 focus:ring-red-500"
+          : "border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+      } ${className}`}
+      {...props}
+    />
+    {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
+  </div>
+);
+
+const Label = ({ children, className = "" }) => (
+  <label
+    className={`text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 ${className}`}
+  >
+    {children}
+  </label>
+);
+
+const Card = ({ children, className = "" }) => (
+  <div
+    className={`rounded-lg border bg-card text-card-foreground shadow-sm bg-white border-gray-200 ${className}`}
+  >
+    {children}
+  </div>
+);
+
+const CardHeader = ({ children, className = "" }) => (
+  <div className={`flex flex-col space-y-1.5 p-6 ${className}`}>{children}</div>
+);
+
+const CardTitle = ({ children, className = "" }) => (
+  <h3
+    className={`text-lg font-semibold leading-none tracking-tight ${className}`}
+  >
+    {children}
+  </h3>
+);
+
+const CardContent = ({ children, className = "" }) => (
+  <div className={`p-6 pt-0 ${className}`}>{children}</div>
+);
+
+// Dialog component
+const Dialog = ({ isOpen, onClose, children }) => {
+  const dialogRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dialogRef.current && !dialogRef.current.contains(event.target)) {
+        onClose();
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isOpen, onClose]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/10 bg-opacity-50 flex items-center justify-center z-50">
+      <div
+        ref={dialogRef}
+        className="bg-white rounded-lg shadow-lg max-w-md w-full m-4 max-h-[90vh] overflow-y-auto"
+      >
+        <div className="p-6 relative">
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+          >
+            <X className="h-5 w-5" />
+          </button>
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const CollegeSportsManager = () => {
+  const [colleges, setColleges] = useState([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isEditing, setIsEditing] = useState(null);
+  const [editingStaff, setEditingStaff] = useState({});
+  const [autoSaveStatus, setAutoSaveStatus] = useState("saved");
+  const [openDialogs, setOpenDialogs] = useState({});
+  const [validationErrors, setValidationErrors] = useState({});
+  const fileInputRef = useRef(null);
+
+  const currentCollege = colleges[currentIndex];
+
+  // Auto-save functionality
+  useEffect(() => {
+    if (colleges.length > 0) {
+      setAutoSaveStatus("saving");
+      const timer = setTimeout(() => {
+        setAutoSaveStatus("saved");
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [colleges]);
+
+  // Validation functions
+  const validateEmail = (email) => {
+    if (!email) return null;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email) ? null : "Invalid email format";
+  };
+
+  const formatPhoneNumber = (phone) => {
+    if (!phone) return "";
+    const cleaned = phone.replace(/\D/g, "");
+    const match = cleaned.match(/^(\d{3})(\d{3})(\d{4})$/);
+    if (match) {
+      return `(${match[1]}) ${match[2]}-${match[3]}`;
+    }
+    return phone;
+  };
+
+  const validatePhoneNumber = (phone) => {
+    if (!phone) return null;
+    const cleaned = phone.replace(/\D/g, "");
+    return cleaned.length === 10 ? null : "Phone number must be 10 digits";
+  };
+
+  // Generate derived staff name
+  const generateStaffName = (first, middle, last) => {
+    const parts = [first, middle, last].filter((part) => part && part.trim());
+    return parts.join(" ");
+  };
+
+  // Import JSON
+  const handleFileImport = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const jsonData = JSON.parse(e.target.result);
+          const dataArray = Array.isArray(jsonData) ? jsonData : [jsonData];
+          setColleges(dataArray);
+          setCurrentIndex(0);
+        } catch (error) {
+          alert("Invalid JSON file");
+        }
+      };
+      reader.readAsText(file);
+    }
+  };
+
+  // Export JSON
+  const handleExport = () => {
+    const dataStr = JSON.stringify(colleges, null, 2);
+    const dataBlob = new Blob([dataStr], { type: "application/json" });
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "college_data.json";
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // Navigation
+  const goToPrevious = () => {
+    if (currentIndex > 0) {
+      setCurrentIndex(currentIndex - 1);
+      setIsEditing(null);
+      setEditingStaff({});
+      setOpenDialogs({});
+    }
+  };
+
+  const goToNext = () => {
+    if (currentIndex < colleges.length - 1) {
+      setCurrentIndex(currentIndex + 1);
+      setIsEditing(null);
+      setEditingStaff({});
+      setOpenDialogs({});
+    }
+  };
+
+  // Handle keyboard navigation
+  useEffect(() => {
+    const handleKeyPress = (event) => {
+      if (event.key === "ArrowLeft" && !isEditing) {
+        goToPrevious();
+      } else if (event.key === "ArrowRight" && !isEditing) {
+        goToNext();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyPress);
+    return () => window.removeEventListener("keydown", handleKeyPress);
+  }, [currentIndex, colleges.length, isEditing]);
+
+  // Add new staff member
+  const addStaff = (sportIndex) => {
+    const newStaff = {
+      staffId: crypto.randomUUID(),
+      staffTitle: "",
+      staffName: "",
+      staffFirstName: "",
+      staffMiddleName: "",
+      staffLastName: "",
+      staffEmail: "",
+      staffPhoneNumber: "",
+      canShowStaffUser: true,
+      canShowTitle: true,
+      canShowName: true,
+      canShowContact: true,
+      staffLinkOrDirectoryLink: null,
+      staffActive: true,
+    };
+
+    const updatedColleges = [...colleges];
+    updatedColleges[currentIndex].sports[sportIndex].staff.push(newStaff);
+    setColleges(updatedColleges);
+  };
+
+  // Set staff visibility preset
+  const setStaffVisibility = (sportIndex, staffIndex, preset) => {
+    const updatedColleges = [...colleges];
+    const staff =
+      updatedColleges[currentIndex].sports[sportIndex].staff[staffIndex];
+
+    if (preset === "visible") {
+      staff.canShowStaffUser = true;
+      staff.canShowTitle = true;
+      staff.canShowName = true;
+      staff.canShowContact = true;
+      staff.staffActive = true;
+    } else if (preset === "hidden") {
+      staff.canShowStaffUser = false;
+      staff.canShowTitle = false;
+      staff.canShowName = false;
+      staff.canShowContact = false;
+      // staffActive remains as is for manual selection
+    }
+
+    setColleges(updatedColleges);
+  };
+
+  // Update staff visibility field
+  const updateStaffVisibility = (sportIndex, staffIndex, field, value) => {
+    const updatedColleges = [...colleges];
+    updatedColleges[currentIndex].sports[sportIndex].staff[staffIndex][field] =
+      value;
+    setColleges(updatedColleges);
+  };
+
+  // Toggle dialog
+  const toggleDialog = (key) => {
+    setOpenDialogs((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  // Get staff visibility status
+  const getStaffVisibilityStatus = (staff) => {
+    const visibleFields = [
+      staff.canShowStaffUser,
+      staff.canShowTitle,
+      staff.canShowName,
+      staff.canShowContact,
+      staff.staffActive,
+    ];
+
+    const allVisible = visibleFields.every((field) => field === true);
+    const allHidden = visibleFields
+      .slice(0, 4)
+      .every((field) => field === false);
+
+    if (allVisible) return "visible";
+    if (allHidden) return "hidden";
+    return "custom";
+  };
+
+  // Edit staff member
+  const startEditStaff = (sportIndex, staffIndex) => {
+    setIsEditing(`${sportIndex}-${staffIndex}`);
+    setEditingStaff({ ...currentCollege.sports[sportIndex].staff[staffIndex] });
+    setValidationErrors({});
+  };
+
+  // Save staff changes
+  const saveStaffChanges = (sportIndex, staffIndex) => {
+    const errors = {};
+
+    // Validate email
+    const emailError = validateEmail(editingStaff.staffEmail);
+    if (emailError) errors.email = emailError;
+
+    // Validate phone
+    const phoneError = validatePhoneNumber(editingStaff.staffPhoneNumber);
+    if (phoneError) errors.phone = phoneError;
+
+    if (Object.keys(errors).length > 0) {
+      setValidationErrors(errors);
+      return;
+    }
+
+    const updatedColleges = [...colleges];
+    const updatedStaff = {
+      ...editingStaff,
+      staffName: generateStaffName(
+        editingStaff.staffFirstName,
+        editingStaff.staffMiddleName,
+        editingStaff.staffLastName,
+      ),
+      staffPhoneNumber: formatPhoneNumber(editingStaff.staffPhoneNumber),
+    };
+
+    updatedColleges[currentIndex].sports[sportIndex].staff[staffIndex] =
+      updatedStaff;
+    setColleges(updatedColleges);
+    setIsEditing(null);
+    setEditingStaff({});
+    setValidationErrors({});
+  };
+
+  // Cancel staff edit
+  const cancelStaffEdit = () => {
+    setIsEditing(null);
+    setEditingStaff({});
+    setValidationErrors({});
+  };
+
+  // Delete staff member
+  const deleteStaff = (sportIndex, staffIndex) => {
+    if (confirm("Are you sure you want to delete this staff member?")) {
+      const updatedColleges = [...colleges];
+      updatedColleges[currentIndex].sports[sportIndex].staff.splice(
+        staffIndex,
+        1,
+      );
+      setColleges(updatedColleges);
+    }
+  };
+
+  // Update editing staff field
+  const updateEditingField = (field, value) => {
+    let processedValue = value;
+
+    // Auto-format phone number as user types
+    if (field === "staffPhoneNumber") {
+      processedValue = formatPhoneNumber(value);
+    }
+
+    setEditingStaff((prev) => {
+      const updated = { ...prev, [field]: processedValue };
+
+      // Update derived staffName when name fields change
+      if (
+        ["staffFirstName", "staffMiddleName", "staffLastName"].includes(field)
+      ) {
+        updated.staffName = generateStaffName(
+          updated.staffFirstName,
+          updated.staffMiddleName,
+          updated.staffLastName,
+        );
+      }
+
+      return updated;
+    });
+
+    // Clear validation errors when user starts typing
+    if (validationErrors.email && field === "staffEmail") {
+      setValidationErrors((prev) => ({ ...prev, email: null }));
+    }
+    if (validationErrors.phone && field === "staffPhoneNumber") {
+      setValidationErrors((prev) => ({ ...prev, phone: null }));
+    }
+  };
+
+  // Get sport-specific styling
+  const getSportColor = (sport) => {
+    const colors = {
+      Baseball: "bg-green-50 border-green-200",
+      Football: "bg-blue-50 border-blue-200",
+      "Men's Basketball": "bg-orange-50 border-orange-200",
+      "Women's Basketball": "bg-purple-50 border-purple-200",
+      "Men's Cross Country": "bg-yellow-50 border-yellow-200",
+      "Women's Cross Country": "bg-pink-50 border-pink-200",
+      "Men's Soccer": "bg-emerald-50 border-emerald-200",
+      "Women's Soccer": "bg-teal-50 border-teal-200",
+      "Track and Field": "bg-indigo-50 border-indigo-200",
+      Volleyball: "bg-rose-50 border-rose-200",
+      Swimming: "bg-cyan-50 border-cyan-200",
+      Tennis: "bg-lime-50 border-lime-200",
+    };
+    return colors[sport] || "bg-gray-50 border-gray-200";
+  };
+
+  // Add new college
+  const addNewCollege = () => {
+    const newCollege = {
+      collegeId: crypto.randomUUID(),
+      officialName: "New College",
+      officialNameLowercase: "new college",
+      createdAt: Date.now(),
+      divisionNCAA: 1,
+      orgIdNCAA: null,
+      academicYearNCAA: new Date().getFullYear() + 1,
+      activeNCAA: true,
+      collegeWebsiteUrl: "",
+      athleticWebsiteUrl: "",
+      stateProvinceNCAA: "",
+      sportDirectoryLink: "",
+      nicheCollegeLink: "",
+      governmentSchoolLink: "",
+      ipedsId: "",
+      updatedAt: Date.now(),
+      sports: [],
+    };
+
+    const updatedColleges = [...colleges, newCollege];
+    setColleges(updatedColleges);
+    setCurrentIndex(updatedColleges.length - 1);
+  };
+
+  // Add new sport to current college
+  const addSport = () => {
+    const newSport = {
+      sport: "New Sport",
+      division: "1",
+      conference: "",
+      governingBody: "NCAA",
+      staff: [],
+    };
+
+    const updatedColleges = [...colleges];
+    updatedColleges[currentIndex].sports.push(newSport);
+    setColleges(updatedColleges);
+  };
+
+  // Delete sport
+  const deleteSport = (sportIndex) => {
+    if (
+      confirm("Are you sure you want to delete this sport and all its staff?")
+    ) {
+      const updatedColleges = [...colleges];
+      updatedColleges[currentIndex].sports.splice(sportIndex, 1);
+      setColleges(updatedColleges);
+    }
+  };
+
+  // Update sport info
+  const updateSport = (sportIndex, field, value) => {
+    const updatedColleges = [...colleges];
+    updatedColleges[currentIndex].sports[sportIndex][field] = value;
+    setColleges(updatedColleges);
+  };
+
+  // Update college basic info
+  const updateCollegeInfo = (field, value) => {
+    const updatedColleges = [...colleges];
+    updatedColleges[currentIndex][field] = value;
+    if (field === "officialName") {
+      updatedColleges[currentIndex]["officialNameLowercase"] =
+        value.toLowerCase();
+    }
+    setColleges(updatedColleges);
+  };
+
+  if (colleges.length === 0) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-8">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center py-16">
+            <h1 className="text-3xl font-bold text-gray-900 mb-8">
+              College Sports Management System
+            </h1>
+            <div className="bg-white rounded-lg shadow-md p-8">
+              <h2 className="text-xl font-semibold mb-4">Get Started</h2>
+              <p className="text-gray-600 mb-6">
+                Import your college sports JSON file or create a new college
+              </p>
+              <div className="flex gap-4 justify-center">
+                <Button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex items-center gap-2"
+                >
+                  <Upload className="h-4 w-4" />
+                  Import JSON File
+                </Button>
+                <Button
+                  onClick={addNewCollege}
+                  variant="outline"
+                  className="flex items-center gap-2"
+                >
+                  <Plus className="h-4 w-4" />
+                  Create New College
+                </Button>
+              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".json"
+                onChange={handleFileImport}
+                className="hidden"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Button
+                onClick={() => fileInputRef.current?.click()}
+                variant="outline"
+                size="sm"
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                Import
+              </Button>
+              <Button onClick={handleExport} variant="outline" size="sm">
+                <Download className="h-4 w-4 mr-2" />
+                Export
+              </Button>
+              <Button onClick={addNewCollege} variant="outline" size="sm">
+                <Plus className="h-4 w-4 mr-2" />
+                New College
+              </Button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".json"
+                onChange={handleFileImport}
+                className="hidden"
+              />
+            </div>
+
+            <div className="flex items-center gap-4">
+              <span
+                className={`text-sm px-2 py-1 rounded ${
+                  autoSaveStatus === "saved"
+                    ? "bg-green-100 text-green-800"
+                    : "bg-yellow-100 text-yellow-800"
+                }`}
+              >
+                {autoSaveStatus === "saved" ? "Saved" : "Saving..."}
+              </span>
+              <span className="text-sm text-gray-600">
+                College {currentIndex + 1} of {colleges.length}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Navigation and College Info */}
+      <div className="max-w-[1500px] mx-auto px-4 py-6">
+        <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <Button
+              onClick={goToPrevious}
+              disabled={currentIndex === 0}
+              variant="outline"
+              size="lg"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </Button>
+
+            <div className="text-center flex-1 mx-8">
+              <Input
+                value={currentCollege?.officialName || ""}
+                onChange={(e) =>
+                  updateCollegeInfo("officialName", e.target.value)
+                }
+                className="text-2xl font-bold text-center border-none shadow-none text-gray-900 bg-transparent"
+                placeholder="College Name"
+              />
+            </div>
+
+            <Button
+              onClick={goToNext}
+              disabled={currentIndex === colleges.length - 1}
+              variant="outline"
+              size="lg"
+            >
+              <ChevronRight className="h-5 w-5" />
+            </Button>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+            <div>
+              <Label>State</Label>
+              <Input
+                value={currentCollege?.stateProvinceNCAA || ""}
+                onChange={(e) =>
+                  updateCollegeInfo("stateProvinceNCAA", e.target.value)
+                }
+                placeholder="State"
+              />
+            </div>
+            <div>
+              <Label>NCAA Division</Label>
+              <Input
+                value={currentCollege?.divisionNCAA || ""}
+                onChange={(e) =>
+                  updateCollegeInfo("divisionNCAA", e.target.value)
+                }
+                placeholder="Division"
+              />
+            </div>
+            <div>
+              <Label>College Website</Label>
+              <Input
+                value={currentCollege?.collegeWebsiteUrl || ""}
+                onChange={(e) =>
+                  updateCollegeInfo("collegeWebsiteUrl", e.target.value)
+                }
+                placeholder="college.edu"
+              />
+            </div>
+            <div>
+              <Label>Athletic Website</Label>
+              <Input
+                value={currentCollege?.athleticWebsiteUrl || ""}
+                onChange={(e) =>
+                  updateCollegeInfo("athleticWebsiteUrl", e.target.value)
+                }
+                placeholder="athletics.college.edu"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Sports Management */}
+        <div className="mb-6">
+          <Button onClick={addSport} className="flex items-center gap-2">
+            <Plus className="h-4 w-4" />
+            Add Sport
+          </Button>
+        </div>
+
+        <div className="space-y-32">
+          {currentCollege?.sports?.map((sport, sportIndex) => (
+            <Card
+              key={sportIndex}
+              className={`${getSportColor(sport.sport)} border-2`}
+            >
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <Input
+                      value={sport.sport}
+                      onChange={(e) =>
+                        updateSport(sportIndex, "sport", e.target.value)
+                      }
+                      className="text-xl font-bold bg-transparent border-none shadow-none"
+                      placeholder="Sport Name"
+                    />
+                    <Input
+                      value={sport.division}
+                      onChange={(e) =>
+                        updateSport(sportIndex, "division", e.target.value)
+                      }
+                      placeholder="Division"
+                      className="bg-white"
+                    />
+                    <Input
+                      value={sport.conference}
+                      onChange={(e) =>
+                        updateSport(sportIndex, "conference", e.target.value)
+                      }
+                      placeholder="Conference"
+                      className="bg-white"
+                    />
+                  </div>
+                  <div className="flex gap-2 ml-4">
+                    <Button
+                      onClick={() => addStaff(sportIndex)}
+                      size="sm"
+                      className="flex items-center gap-2"
+                    >
+                      <Plus className="h-4 w-4" />
+                      Add Staff
+                    </Button>
+                    <Button
+                      onClick={() => deleteSport(sportIndex)}
+                      size="sm"
+                      variant="destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse bg-white rounded-lg overflow-hidden">
+                    <thead className="bg-gray-50">
+                      <tr className="border-b">
+                        <th className="text-left p-3 font-semibold">
+                          Visibility
+                        </th>
+                        <th className="text-left p-3 font-semibold">Title</th>
+                        <th className="text-left p-3 font-semibold">
+                          First Name
+                        </th>
+                        <th className="text-left p-3 font-semibold">
+                          Middle Name
+                        </th>
+                        <th className="text-left p-3 font-semibold">
+                          Last Name
+                        </th>
+                        <th className="text-left p-3 font-semibold">Contact</th>
+                        <th className="text-left p-3 font-semibold">Phone</th>
+                        <th className="text-left p-3 font-semibold">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sport.staff?.length === 0 ? (
+                        <tr>
+                          <td
+                            colSpan="8"
+                            className="p-8 text-center text-gray-500"
+                          >
+                            No staff members yet. Click "Add Staff" to get
+                            started.
+                          </td>
+                        </tr>
+                      ) : (
+                        sport.staff?.map((staff, staffIndex) => {
+                          const visibilityStatus =
+                            getStaffVisibilityStatus(staff);
+                          const dialogKey = `${sportIndex}-${staffIndex}`;
+
+                          return (
+                            <tr
+                              key={staff.staffId}
+                              className="border-b hover:bg-gray-50"
+                            >
+                              <td className="p-3">
+                                <div className="flex items-center gap-3">
+                                  {/* Visibility Status Indicator */}
+                                  <div className="flex flex-col items-center gap-1">
+                                    <div
+                                      className={`w-3 h-3 rounded-full ${
+                                        visibilityStatus === "visible"
+                                          ? "bg-green-500"
+                                          : visibilityStatus === "hidden"
+                                            ? "bg-red-500"
+                                            : "bg-yellow-500"
+                                      }`}
+                                      title={
+                                        visibilityStatus === "visible"
+                                          ? "Fully Visible"
+                                          : visibilityStatus === "hidden"
+                                            ? "Hidden"
+                                            : "Custom"
+                                      }
+                                    ></div>
+                                    <span className="text-xs font-medium">
+                                      {visibilityStatus === "visible"
+                                        ? "V"
+                                        : visibilityStatus === "hidden"
+                                          ? "H"
+                                          : "C"}
+                                    </span>
+                                  </div>
+
+                                  {/* Stacked Preset Buttons */}
+                                  <div className="flex flex-col gap-1">
+                                    <Button
+                                      size="xs"
+                                      variant={
+                                        visibilityStatus === "visible"
+                                          ? "success"
+                                          : "outline"
+                                      }
+                                      onClick={() =>
+                                        setStaffVisibility(
+                                          sportIndex,
+                                          staffIndex,
+                                          "visible",
+                                        )
+                                      }
+                                      className="h-6 px-2"
+                                      title="Set Fully Visible"
+                                    >
+                                      {visibilityStatus === "visible" && (
+                                        <Check className="h-3 w-3 mr-1" />
+                                      )}
+                                      <Eye className="h-3 w-3" />
+                                    </Button>
+                                    <Button
+                                      size="xs"
+                                      variant={
+                                        visibilityStatus === "hidden"
+                                          ? "warning"
+                                          : "outline"
+                                      }
+                                      onClick={() =>
+                                        setStaffVisibility(
+                                          sportIndex,
+                                          staffIndex,
+                                          "hidden",
+                                        )
+                                      }
+                                      className="h-6 px-2"
+                                      title="Set Hidden"
+                                    >
+                                      {visibilityStatus === "hidden" && (
+                                        <Check className="h-3 w-3 mr-1" />
+                                      )}
+                                      <EyeOff className="h-3 w-3" />
+                                    </Button>
+                                    <Button
+                                      size="xs"
+                                      variant={
+                                        visibilityStatus === "custom"
+                                          ? "secondary"
+                                          : "outline"
+                                      }
+                                      onClick={() => toggleDialog(dialogKey)}
+                                      className="h-6 px-2"
+                                      title="Custom Settings"
+                                    >
+                                      {visibilityStatus === "custom" && (
+                                        <Check className="h-3 w-3 mr-1" />
+                                      )}
+                                      <Settings className="h-3 w-3" />
+                                    </Button>
+                                  </div>
+
+                                  {/* Custom Settings Dialog */}
+                                  <Dialog
+                                    isOpen={openDialogs[dialogKey]}
+                                    onClose={() => toggleDialog(dialogKey)}
+                                  >
+                                    <div className="space-y-4">
+                                      <div className="pr-8">
+                                        <h4 className="font-semibold text-lg">
+                                          Custom Visibility Settings
+                                        </h4>
+                                        <p className="text-sm text-gray-600 mt-1">
+                                          Configure individual visibility
+                                          options for{" "}
+                                          {staff.staffFirstName ||
+                                            "this staff member"}
+                                        </p>
+                                      </div>
+                                      <div className="space-y-3">
+                                        <label className="flex items-center gap-3 p-2 rounded hover:bg-gray-50">
+                                          <input
+                                            type="checkbox"
+                                            checked={staff.canShowStaffUser}
+                                            onChange={(e) =>
+                                              updateStaffVisibility(
+                                                sportIndex,
+                                                staffIndex,
+                                                "canShowStaffUser",
+                                                e.target.checked,
+                                              )
+                                            }
+                                            className="rounded h-4 w-4"
+                                          />
+                                          <div>
+                                            <span className="text-sm font-medium">
+                                              Show Staff User
+                                            </span>
+                                            <p className="text-xs text-gray-500">
+                                              Display this staff member in user
+                                              listings
+                                            </p>
+                                          </div>
+                                        </label>
+                                        <label className="flex items-center gap-3 p-2 rounded hover:bg-gray-50">
+                                          <input
+                                            type="checkbox"
+                                            checked={staff.canShowTitle}
+                                            onChange={(e) =>
+                                              updateStaffVisibility(
+                                                sportIndex,
+                                                staffIndex,
+                                                "canShowTitle",
+                                                e.target.checked,
+                                              )
+                                            }
+                                            className="rounded h-4 w-4"
+                                          />
+                                          <div>
+                                            <span className="text-sm font-medium">
+                                              Show Title
+                                            </span>
+                                            <p className="text-xs text-gray-500">
+                                              Display the staff member's
+                                              title/position
+                                            </p>
+                                          </div>
+                                        </label>
+                                        <label className="flex items-center gap-3 p-2 rounded hover:bg-gray-50">
+                                          <input
+                                            type="checkbox"
+                                            checked={staff.canShowName}
+                                            onChange={(e) =>
+                                              updateStaffVisibility(
+                                                sportIndex,
+                                                staffIndex,
+                                                "canShowName",
+                                                e.target.checked,
+                                              )
+                                            }
+                                            className="rounded h-4 w-4"
+                                          />
+                                          <div>
+                                            <span className="text-sm font-medium">
+                                              Show Name
+                                            </span>
+                                            <p className="text-xs text-gray-500">
+                                              Display the staff member's full
+                                              name
+                                            </p>
+                                          </div>
+                                        </label>
+                                        <label className="flex items-center gap-3 p-2 rounded hover:bg-gray-50">
+                                          <input
+                                            type="checkbox"
+                                            checked={staff.canShowContact}
+                                            onChange={(e) =>
+                                              updateStaffVisibility(
+                                                sportIndex,
+                                                staffIndex,
+                                                "canShowContact",
+                                                e.target.checked,
+                                              )
+                                            }
+                                            className="rounded h-4 w-4"
+                                          />
+                                          <div>
+                                            <span className="text-sm font-medium">
+                                              Show Contact
+                                            </span>
+                                            <p className="text-xs text-gray-500">
+                                              Display email and phone contact
+                                              information
+                                            </p>
+                                          </div>
+                                        </label>
+                                        <label className="flex items-center gap-3 p-2 rounded hover:bg-gray-50">
+                                          <input
+                                            type="checkbox"
+                                            checked={staff.staffActive}
+                                            onChange={(e) =>
+                                              updateStaffVisibility(
+                                                sportIndex,
+                                                staffIndex,
+                                                "staffActive",
+                                                e.target.checked,
+                                              )
+                                            }
+                                            className="rounded h-4 w-4"
+                                          />
+                                          <div>
+                                            <span className="text-sm font-medium">
+                                              Staff Active
+                                            </span>
+                                            <p className="text-xs text-gray-500">
+                                              Mark staff member as currently
+                                              active
+                                            </p>
+                                          </div>
+                                        </label>
+                                      </div>
+                                      <div className="flex justify-end pt-4 border-t">
+                                        <Button
+                                          onClick={() =>
+                                            toggleDialog(dialogKey)
+                                          }
+                                          size="sm"
+                                        >
+                                          Done
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  </Dialog>
+                                </div>
+                              </td>
+                              <td className="p-3">
+                                {isEditing === `${sportIndex}-${staffIndex}` ? (
+                                  <Input
+                                    value={editingStaff.staffTitle || ""}
+                                    onChange={(e) =>
+                                      updateEditingField(
+                                        "staffTitle",
+                                        e.target.value,
+                                      )
+                                    }
+                                    className="min-w-24"
+                                    placeholder="Head Coach"
+                                  />
+                                ) : (
+                                  staff.staffTitle || "-"
+                                )}
+                              </td>
+                              <td className="p-3">
+                                {isEditing === `${sportIndex}-${staffIndex}` ? (
+                                  <Input
+                                    value={editingStaff.staffFirstName || ""}
+                                    onChange={(e) =>
+                                      updateEditingField(
+                                        "staffFirstName",
+                                        e.target.value,
+                                      )
+                                    }
+                                    className="min-w-24"
+                                    placeholder="John"
+                                  />
+                                ) : (
+                                  staff.staffFirstName || "-"
+                                )}
+                              </td>
+                              <td className="p-3">
+                                {isEditing === `${sportIndex}-${staffIndex}` ? (
+                                  <Input
+                                    value={editingStaff.staffMiddleName || ""}
+                                    onChange={(e) =>
+                                      updateEditingField(
+                                        "staffMiddleName",
+                                        e.target.value,
+                                      )
+                                    }
+                                    className="min-w-24"
+                                    placeholder="M"
+                                  />
+                                ) : (
+                                  staff.staffMiddleName || "-"
+                                )}
+                              </td>
+                              <td className="p-3">
+                                {isEditing === `${sportIndex}-${staffIndex}` ? (
+                                  <Input
+                                    value={editingStaff.staffLastName || ""}
+                                    onChange={(e) =>
+                                      updateEditingField(
+                                        "staffLastName",
+                                        e.target.value,
+                                      )
+                                    }
+                                    className="min-w-24"
+                                    placeholder="Smith"
+                                  />
+                                ) : (
+                                  staff.staffLastName || "-"
+                                )}
+                              </td>
+                              <td className="p-3">
+                                {isEditing === `${sportIndex}-${staffIndex}` ? (
+                                  <Input
+                                    value={editingStaff.staffEmail || ""}
+                                    onChange={(e) =>
+                                      updateEditingField(
+                                        "staffEmail",
+                                        e.target.value,
+                                      )
+                                    }
+                                    className="min-w-32"
+                                    placeholder="john.smith@college.edu"
+                                    error={validationErrors.email}
+                                  />
+                                ) : (
+                                  staff.staffEmail || "-"
+                                )}
+                              </td>
+                              <td className="p-3">
+                                {isEditing === `${sportIndex}-${staffIndex}` ? (
+                                  <Input
+                                    value={editingStaff.staffPhoneNumber || ""}
+                                    onChange={(e) =>
+                                      updateEditingField(
+                                        "staffPhoneNumber",
+                                        e.target.value,
+                                      )
+                                    }
+                                    className="min-w-28"
+                                    placeholder="(555) 123-4567"
+                                    error={validationErrors.phone}
+                                  />
+                                ) : (
+                                  staff.staffPhoneNumber || "-"
+                                )}
+                              </td>
+                              <td className="p-3">
+                                {isEditing === `${sportIndex}-${staffIndex}` ? (
+                                  <div className="flex gap-2">
+                                    <Button
+                                      size="sm"
+                                      onClick={() =>
+                                        saveStaffChanges(sportIndex, staffIndex)
+                                      }
+                                      className="h-8 w-8 p-0"
+                                    >
+                                      <Save className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={cancelStaffEdit}
+                                      className="h-8 w-8 p-0"
+                                    >
+                                      <X className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <div className="flex gap-2">
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() =>
+                                        startEditStaff(sportIndex, staffIndex)
+                                      }
+                                      className="h-8 w-8 p-0"
+                                    >
+                                      <Edit2 className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="destructive"
+                                      onClick={() =>
+                                        deleteStaff(sportIndex, staffIndex)
+                                      }
+                                      className="h-8 w-8 p-0"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+
+          {currentCollege?.sports?.length === 0 && (
+            <div className="text-center py-12">
+              <p className="text-gray-500 mb-4">No sports added yet.</p>
+              <Button
+                onClick={addSport}
+                className="flex items-center gap-2 mx-auto"
+              >
+                <Plus className="h-4 w-4" />
+                Add Your First Sport
+              </Button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default CollegeSportsManager;
