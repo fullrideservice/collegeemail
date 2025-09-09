@@ -172,6 +172,9 @@ const CollegeSportsManager = () => {
   const [isProcessingAI, setIsProcessingAI] = useState(false);
   const [apiKey, setApiKey] = useState("");
   const [showBulkInput, setShowBulkInput] = useState(null);
+  const [showValidationDialog, setShowValidationDialog] = useState(false);
+  const [validationWarnings, setValidationWarnings] = useState({});
+  const [pendingNavigation, setPendingNavigation] = useState(null);
   const fileInputRef = useRef(null);
 
   const currentCollege = colleges[currentIndex];
@@ -199,7 +202,7 @@ const CollegeSportsManager = () => {
     const cleaned = phone.replace(/\D/g, "");
     const match = cleaned.match(/^(\d{3})(\d{3})(\d{4})$/);
     if (match) {
-      return `(${match[1]}) ${match[2]}-${match[3]}`;
+      return `${match[1]}-${match[2]}-${match[3]}`;
     }
     return phone;
   };
@@ -214,6 +217,144 @@ const CollegeSportsManager = () => {
   const generateStaffName = (first, middle, last) => {
     const parts = [first, middle, last].filter((part) => part && part.trim());
     return parts.join(" ");
+  };
+
+  // Enhanced validation function for navigation
+  const validateCurrentCollege = () => {
+    if (!currentCollege || !currentCollege.sports) return null;
+
+    const warnings = {
+      noCoaches: [],
+      noEmails: [],
+      customVisibility: [],
+      hiddenCoaches: [],
+      inactiveCoaches: [],
+    };
+
+    currentCollege.sports.forEach((sport) => {
+      const sportName = sport.sport || "Unnamed Sport";
+
+      // Check if sport has no coaches at all
+      if (!sport.staff || sport.staff.length === 0) {
+        warnings.noCoaches.push(sportName);
+        return;
+      }
+
+      // Check for coaches with no emails
+      const coachesWithEmails = sport.staff.filter(
+        (staff) => staff.staffEmail && staff.staffEmail.trim(),
+      );
+      if (coachesWithEmails.length === 0) {
+        warnings.noEmails.push(sportName);
+      }
+
+      // Check visibility and active status
+      let hasCustomVisibility = false;
+      let hasHiddenCoaches = false;
+      let hasInactiveCoaches = false;
+
+      sport.staff.forEach((staff) => {
+        // Check if staff is inactive
+        if (staff.staffActive === false) {
+          hasInactiveCoaches = true;
+        }
+
+        // Define visibility fields
+        const visibilityFields = [
+          staff.canShowStaffUser,
+          staff.canShowTitle,
+          staff.canShowName,
+          staff.canShowContact,
+          staff.staffActive,
+        ];
+
+        // Check for completely hidden (all false)
+        const allFalse = visibilityFields.every((field) => field === false);
+
+        // Check for fully visible (all true)
+        const allTrue = visibilityFields.every((field) => field === true);
+
+        if (allFalse) {
+          hasHiddenCoaches = true;
+        } else if (!allTrue) {
+          // Anything that's not all true and not all false is custom
+          // This includes null values and mixed combinations
+          hasCustomVisibility = true;
+        }
+      });
+
+      if (hasCustomVisibility) {
+        warnings.customVisibility.push(sportName);
+      }
+      if (hasHiddenCoaches) {
+        warnings.hiddenCoaches.push(sportName);
+      }
+      if (hasInactiveCoaches) {
+        warnings.inactiveCoaches.push(sportName);
+      }
+    });
+
+    // Return warnings only if any exist
+    const hasWarnings = Object.values(warnings).some((arr) => arr.length > 0);
+    return hasWarnings ? warnings : null;
+  };
+
+  // Navigation with validation
+  const goToPrevious = () => {
+    if (currentIndex > 0) {
+      const warnings = validateCurrentCollege();
+      if (warnings) {
+        setValidationWarnings(warnings);
+        setPendingNavigation("previous");
+        setShowValidationDialog(true);
+        return;
+      }
+      performNavigation("previous");
+    }
+  };
+
+  const goToNext = () => {
+    if (currentIndex < colleges.length - 1) {
+      const warnings = validateCurrentCollege();
+      if (warnings) {
+        setValidationWarnings(warnings);
+        setPendingNavigation("next");
+        setShowValidationDialog(true);
+        return;
+      }
+      performNavigation("next");
+    }
+  };
+
+  const performNavigation = (direction) => {
+    if (direction === "previous" && currentIndex > 0) {
+      setCurrentIndex(currentIndex - 1);
+    } else if (direction === "next" && currentIndex < colleges.length - 1) {
+      setCurrentIndex(currentIndex + 1);
+    }
+
+    // Reset states after navigation
+    setIsEditing(null);
+    setEditingStaff({});
+    setOpenDialogs({});
+    setShowBulkInput(null);
+    setBulkInputText("");
+    setAiResponseText("");
+  };
+
+  const handleValidationProceed = () => {
+    setShowValidationDialog(false);
+    if (pendingNavigation) {
+      performNavigation(pendingNavigation);
+      setPendingNavigation(null);
+    }
+    setValidationWarnings({});
+  };
+
+  const handleValidationCancel = () => {
+    setShowValidationDialog(false);
+    setPendingNavigation(null);
+    setValidationWarnings({});
   };
 
   // Enhanced AI processing with improved prompt and JSON parsing
@@ -359,31 +500,6 @@ Return only the JSON array, no other text.`;
     link.download = "college_data.json";
     link.click();
     URL.revokeObjectURL(url);
-  };
-
-  // Navigation
-  const goToPrevious = () => {
-    if (currentIndex > 0) {
-      setCurrentIndex(currentIndex - 1);
-      setIsEditing(null);
-      setEditingStaff({});
-      setOpenDialogs({});
-      setShowBulkInput(null);
-      setBulkInputText("");
-      setAiResponseText("");
-    }
-  };
-
-  const goToNext = () => {
-    if (currentIndex < colleges.length - 1) {
-      setCurrentIndex(currentIndex + 1);
-      setIsEditing(null);
-      setEditingStaff({});
-      setOpenDialogs({});
-      setShowBulkInput(null);
-      setBulkInputText("");
-      setAiResponseText("");
-    }
   };
 
   // Handle keyboard navigation
@@ -646,6 +762,7 @@ Return only the JSON array, no other text.`;
       division: "1",
       conference: "",
       governingBody: "NCAA",
+      sportCoachDirectoryLink: "",
       staff: [],
     };
 
@@ -770,6 +887,9 @@ Return only the JSON array, no other text.`;
                 {autoSaveStatus === "saved" ? "Saved" : "Saving..."}
               </span>
               <span className="text-sm text-gray-600">
+                {currentCollege?.sports?.length || 0} Sports
+              </span>
+              <span className="text-sm text-gray-600">
                 College {currentIndex + 1} of {colleges.length}
               </span>
             </div>
@@ -863,6 +983,99 @@ Return only the JSON array, no other text.`;
           </Button>
         </div>
 
+        {/* Validation Warning Dialog */}
+        <Dialog isOpen={showValidationDialog} onClose={handleValidationCancel}>
+          <div className="space-y-4">
+            <div className="pr-8">
+              <h4 className="font-semibold text-lg text-red-800 flex items-center gap-2">
+                <div className="w-6 h-6 bg-red-100 rounded-full flex items-center justify-center">
+                  <div className="w-3 h-3 bg-red-600 rounded-full"></div>
+                </div>
+                Data Quality Warnings
+              </h4>
+              <p className="text-sm text-gray-600 mt-1">
+                Issues found with{" "}
+                {currentCollege?.officialName || "current college"}. Review or
+                proceed anyway.
+              </p>
+            </div>
+
+            <div className="border border-red-200 rounded-lg p-4 bg-red-50 space-y-3 max-h-80 overflow-y-auto">
+              {validationWarnings.noCoaches?.length > 0 && (
+                <div>
+                  <h5 className="font-medium text-red-900 mb-1">
+                    Sports with no coaches:
+                  </h5>
+                  <p className="text-sm text-red-700 ml-3">
+                    {validationWarnings.noCoaches.join(", ")}
+                  </p>
+                </div>
+              )}
+
+              {validationWarnings.noEmails?.length > 0 && (
+                <div>
+                  <h5 className="font-medium text-red-900 mb-1">
+                    Sports with coaches missing emails:
+                  </h5>
+                  <p className="text-sm text-red-700 ml-3">
+                    {validationWarnings.noEmails.join(", ")}
+                  </p>
+                </div>
+              )}
+
+              {validationWarnings.customVisibility?.length > 0 && (
+                <div>
+                  <h5 className="font-medium text-red-900 mb-1">
+                    Sports with coaches using custom visibility:
+                  </h5>
+                  <p className="text-sm text-red-700 ml-3">
+                    {validationWarnings.customVisibility.join(", ")}
+                  </p>
+                </div>
+              )}
+
+              {validationWarnings.hiddenCoaches?.length > 0 && (
+                <div>
+                  <h5 className="font-medium text-red-900 mb-1">
+                    Sports with completely hidden coaches:
+                  </h5>
+                  <p className="text-sm text-red-700 ml-3">
+                    {validationWarnings.hiddenCoaches.join(", ")}
+                  </p>
+                </div>
+              )}
+
+              {validationWarnings.inactiveCoaches?.length > 0 && (
+                <div>
+                  <h5 className="font-medium text-red-900 mb-1">
+                    Sports with inactive coaches:
+                  </h5>
+                  <p className="text-sm text-red-700 ml-3">
+                    {validationWarnings.inactiveCoaches.join(", ")}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4 border-t">
+              <Button
+                onClick={handleValidationCancel}
+                variant="outline"
+                size="sm"
+              >
+                Stay Here
+              </Button>
+              <Button
+                onClick={handleValidationProceed}
+                variant="destructive"
+                size="sm"
+              >
+                Proceed Anyway
+              </Button>
+            </div>
+          </div>
+        </Dialog>
+
         <div className="space-y-32">
           {currentCollege?.sports?.map((sport, sportIndex) => (
             <Card
@@ -871,7 +1084,7 @@ Return only the JSON array, no other text.`;
             >
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
-                  <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-4">
                     <Input
                       value={sport.sport}
                       onChange={(e) =>
@@ -894,6 +1107,18 @@ Return only the JSON array, no other text.`;
                         updateSport(sportIndex, "conference", e.target.value)
                       }
                       placeholder="Conference"
+                      className="bg-white"
+                    />
+                    <Input
+                      value={sport.sportCoachDirectoryLink || ""}
+                      onChange={(e) =>
+                        updateSport(
+                          sportIndex,
+                          "sportCoachDirectoryLink",
+                          e.target.value,
+                        )
+                      }
+                      placeholder="Coach Directory URL"
                       className="bg-white"
                     />
                   </div>
@@ -1366,9 +1591,8 @@ Return only the JSON array, no other text.`;
                 </div>
 
                 {/* Enhanced Bulk Input Section with AI Processing */}
-                {(showBulkInput ===
-                  `${sportIndex}-${sport.staff?.length - 1}` ||
-                  (isEditing && showBulkInput === isEditing)) && (
+                {showBulkInput ===
+                  `${sportIndex}-${isEditing?.split("-")[1] || sport.staff?.length - 1}` && (
                   <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
                     <div className="flex items-center justify-between mb-3">
                       <h4 className="font-semibold text-blue-900">
@@ -1424,7 +1648,7 @@ Return only the JSON array, no other text.`;
                       various text formats.
                       <br />
                       <span className="font-medium">Tip:</span> Press{" "}
-                      <kbd className="px-1 w-[50px] h-[80px] py-0.5 bg-gray-200 rounded text-xs">
+                      <kbd className="px-1 py-0.5 bg-gray-200 rounded text-xs">
                         Ctrl+Q
                       </kbd>{" "}
                       to quickly process with AI.
