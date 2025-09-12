@@ -14,108 +14,17 @@ import {
   Settings,
   Check,
 } from "lucide-react";
-
-const Button = ({
-  onClick,
-  disabled,
-  variant = "default",
-  size = "default",
-  className = "",
-  children,
-}) => {
-  const baseClasses =
-    "inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-background";
-
-  const variants = {
-    default:
-      "bg-primary text-primary-foreground hover:bg-primary/90 bg-blue-600 text-white hover:bg-blue-700",
-    destructive:
-      "bg-destructive text-destructive-foreground hover:bg-destructive/90 bg-red-600 text-white hover:bg-red-700",
-    outline:
-      "border border-input hover:bg-accent hover:text-accent-foreground border-gray-300 hover:bg-gray-50",
-    secondary:
-      "bg-secondary text-secondary-foreground hover:bg-secondary/80 bg-gray-100 text-gray-900 hover:bg-gray-200",
-    ghost: "hover:bg-accent hover:text-accent-foreground hover:bg-gray-100",
-    link: "underline-offset-4 hover:underline text-primary text-blue-600",
-    success: "bg-green-600 text-white hover:bg-green-700",
-    warning: "bg-yellow-600 text-white hover:bg-yellow-700",
-  };
-
-  const sizes = {
-    default: "h-10 py-2 px-4",
-    sm: "h-9 px-3 rounded-md",
-    lg: "h-11 px-8 rounded-md",
-    icon: "h-10 w-10",
-    xs: "h-8 px-2 text-xs",
-  };
-
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      className={`${baseClasses} ${variants[variant]} ${sizes[size]} ${className}`}
-    >
-      {children}
-    </button>
-  );
-};
-
-const Input = ({
-  value,
-  onChange,
-  placeholder,
-  className = "",
-  error,
-  ...props
-}) => (
-  <div className="w-full">
-    <input
-      type="text"
-      value={value}
-      onChange={onChange}
-      placeholder={placeholder}
-      className={`flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${
-        error
-          ? "border-red-500 focus:border-red-500 focus:ring-red-500"
-          : "border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-      } ${className}`}
-      {...props}
-    />
-    {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
-  </div>
-);
-
-const Label = ({ children, className = "" }) => (
-  <label
-    className={`text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 ${className}`}
-  >
-    {children}
-  </label>
-);
-
-const Card = ({ children, className = "" }) => (
-  <div
-    className={`rounded-lg border bg-card text-card-foreground shadow-sm bg-white border-gray-200 ${className}`}
-  >
-    {children}
-  </div>
-);
-
-const CardHeader = ({ children, className = "" }) => (
-  <div className={`flex flex-col space-y-1.5 p-6 ${className}`}>{children}</div>
-);
-
-const CardTitle = ({ children, className = "" }) => (
-  <h3
-    className={`text-lg font-semibold leading-none tracking-tight ${className}`}
-  >
-    {children}
-  </h3>
-);
-
-const CardContent = ({ children, className = "" }) => (
-  <div className={`p-6 pt-0 ${className}`}>{children}</div>
-);
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  SelectItem,
+  Select,
+  SelectContent,
+  SelectTrigger,
+  SelectValue,
+} from "@radix-ui/react-select";
 
 // Dialog component
 const Dialog = ({ isOpen, onClose, children }) => {
@@ -259,12 +168,13 @@ const CollegeSportsManager = () => {
           hasInactiveCoaches = true;
         }
 
-        // Define visibility fields
+        // Define visibility fields - updated to use new field names
         const visibilityFields = [
           staff.canShowStaffUser,
           staff.canShowTitle,
           staff.canShowName,
-          staff.canShowContact,
+          staff.canShowEmail,
+          staff.canShowPhoneNumber,
           staff.staffActive,
         ];
 
@@ -530,7 +440,8 @@ Return only the JSON array, no other text.`;
       canShowStaffUser: true,
       canShowTitle: true,
       canShowName: true,
-      canShowContact: true,
+      canShowEmail: true,
+      canShowPhoneNumber: true,
       staffLinkOrDirectoryLink: null,
       staffActive: true,
     };
@@ -557,18 +468,22 @@ Return only the JSON array, no other text.`;
       staff.canShowStaffUser = true;
       staff.canShowTitle = true;
       staff.canShowName = true;
-      staff.canShowContact = true;
+      staff.canShowEmail = true;
+      staff.canShowPhoneNumber = true;
       staff.staffActive = true;
     } else if (preset === "hidden") {
       staff.canShowStaffUser = false;
       staff.canShowTitle = false;
       staff.canShowName = false;
-      staff.canShowContact = false;
+      staff.canShowEmail = false;
+      staff.canShowPhoneNumber = false;
+      staff.staffActive = null;
     }
 
     setColleges(updatedColleges);
   };
 
+  // Update staff visibility field
   // Update staff visibility field
   const updateStaffVisibility = (sportIndex, staffIndex, field, value) => {
     const updatedColleges = [...colleges];
@@ -588,13 +503,14 @@ Return only the JSON array, no other text.`;
       staff.canShowStaffUser,
       staff.canShowTitle,
       staff.canShowName,
-      staff.canShowContact,
+      staff.canShowEmail,
+      staff.canShowPhoneNumber,
       staff.staffActive,
     ];
 
     const allVisible = visibleFields.every((field) => field === true);
     const allHidden = visibleFields
-      .slice(0, 4)
+      .slice(0, 5)
       .every((field) => field === false);
 
     if (allVisible) return "visible";
@@ -711,20 +627,7 @@ Return only the JSON array, no other text.`;
 
   // Get sport-specific styling
   const getSportColor = (sport) => {
-    const colors = {
-      Baseball: "bg-green-50 border-green-200",
-      Football: "bg-blue-50 border-blue-200",
-      "Men's Basketball": "bg-orange-50 border-orange-200",
-      "Women's Basketball": "bg-purple-50 border-purple-200",
-      "Men's Cross Country": "bg-yellow-50 border-yellow-200",
-      "Women's Cross Country": "bg-pink-50 border-pink-200",
-      "Men's Soccer": "bg-emerald-50 border-emerald-200",
-      "Women's Soccer": "bg-teal-50 border-teal-200",
-      "Track and Field": "bg-indigo-50 border-indigo-200",
-      Volleyball: "bg-rose-50 border-rose-200",
-      Swimming: "bg-cyan-50 border-cyan-200",
-      Tennis: "bg-lime-50 border-lime-200",
-    };
+    const colors = {};
     return colors[sport] || "bg-gray-50 border-gray-200";
   };
 
@@ -933,7 +836,7 @@ Return only the JSON array, no other text.`;
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
             <div>
-              <Label>State</Label>
+              <Label className="mb-2">State</Label>
               <Input
                 value={currentCollege?.stateProvinceNCAA || ""}
                 onChange={(e) =>
@@ -943,7 +846,7 @@ Return only the JSON array, no other text.`;
               />
             </div>
             <div>
-              <Label>NCAA Division</Label>
+              <Label className="mb-2">NCAA Division</Label>
               <Input
                 value={currentCollege?.divisionNCAA || ""}
                 onChange={(e) =>
@@ -953,7 +856,7 @@ Return only the JSON array, no other text.`;
               />
             </div>
             <div>
-              <Label>College Website</Label>
+              <Label className="mb-2">College Website</Label>
               <Input
                 value={currentCollege?.collegeWebsiteUrl || ""}
                 onChange={(e) =>
@@ -963,7 +866,7 @@ Return only the JSON array, no other text.`;
               />
             </div>
             <div>
-              <Label>Athletic Website</Label>
+              <Label className="mb-2">Athletic Website</Label>
               <Input
                 value={currentCollege?.athleticWebsiteUrl || ""}
                 onChange={(e) =>
@@ -984,93 +887,215 @@ Return only the JSON array, no other text.`;
         </div>
 
         {/* Validation Warning Dialog */}
-        <Dialog isOpen={showValidationDialog} onClose={handleValidationCancel}>
+        {/* Custom Settings Dialog */}
+        <Dialog
+          isOpen={openDialogs[dialogKey]}
+          onClose={() => toggleDialog(dialogKey)}
+        >
           <div className="space-y-4">
             <div className="pr-8">
-              <h4 className="font-semibold text-lg text-red-800 flex items-center gap-2">
-                <div className="w-6 h-6 bg-red-100 rounded-full flex items-center justify-center">
-                  <div className="w-3 h-3 bg-red-600 rounded-full"></div>
-                </div>
-                Data Quality Warnings
+              <h4 className="font-semibold text-lg">
+                Custom Visibility Settings
               </h4>
               <p className="text-sm text-gray-600 mt-1">
-                Issues found with{" "}
-                {currentCollege?.officialName || "current college"}. Review or
-                proceed anyway.
+                Configure individual visibility options for{" "}
+                {staff.staffFirstName || "this staff member"}
               </p>
             </div>
-
-            <div className="border border-red-200 rounded-lg p-4 bg-red-50 space-y-3 max-h-80 overflow-y-auto">
-              {validationWarnings.noCoaches?.length > 0 && (
-                <div>
-                  <h5 className="font-medium text-red-900 mb-1">
-                    Sports with no coaches:
-                  </h5>
-                  <p className="text-sm text-red-700 ml-3">
-                    {validationWarnings.noCoaches.join(", ")}
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Show Staff User</Label>
+                  <Select
+                    value={
+                      staff.canShowStaffUser === null
+                        ? "null"
+                        : staff.canShowStaffUser.toString()
+                    }
+                    onValueChange={(value) =>
+                      updateStaffVisibility(
+                        sportIndex,
+                        staffIndex,
+                        "canShowStaffUser",
+                        value === "null" ? null : value === "true",
+                      )
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="null">Not Set (null)</SelectItem>
+                      <SelectItem value="true">Visible (true)</SelectItem>
+                      <SelectItem value="false">Hidden (false)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-gray-500">
+                    Display this staff member in user listings
                   </p>
                 </div>
-              )}
 
-              {validationWarnings.noEmails?.length > 0 && (
-                <div>
-                  <h5 className="font-medium text-red-900 mb-1">
-                    Sports with coaches missing emails:
-                  </h5>
-                  <p className="text-sm text-red-700 ml-3">
-                    {validationWarnings.noEmails.join(", ")}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Show Title</Label>
+                  <Select
+                    value={
+                      staff.canShowTitle === null
+                        ? "null"
+                        : staff.canShowTitle.toString()
+                    }
+                    onValueChange={(value) =>
+                      updateStaffVisibility(
+                        sportIndex,
+                        staffIndex,
+                        "canShowTitle",
+                        value === "null" ? null : value === "true",
+                      )
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="null">Not Set (null)</SelectItem>
+                      <SelectItem value="true">Visible (true)</SelectItem>
+                      <SelectItem value="false">Hidden (false)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-gray-500">
+                    Display the staff member's title/position
                   </p>
                 </div>
-              )}
 
-              {validationWarnings.customVisibility?.length > 0 && (
-                <div>
-                  <h5 className="font-medium text-red-900 mb-1">
-                    Sports with coaches using custom visibility:
-                  </h5>
-                  <p className="text-sm text-red-700 ml-3">
-                    {validationWarnings.customVisibility.join(", ")}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Show Name</Label>
+                  <Select
+                    value={
+                      staff.canShowName === null
+                        ? "null"
+                        : staff.canShowName.toString()
+                    }
+                    onValueChange={(value) =>
+                      updateStaffVisibility(
+                        sportIndex,
+                        staffIndex,
+                        "canShowName",
+                        value === "null" ? null : value === "true",
+                      )
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="null">Not Set (null)</SelectItem>
+                      <SelectItem value="true">Visible (true)</SelectItem>
+                      <SelectItem value="false">Hidden (false)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-gray-500">
+                    Display the staff member's full name
                   </p>
                 </div>
-              )}
 
-              {validationWarnings.hiddenCoaches?.length > 0 && (
-                <div>
-                  <h5 className="font-medium text-red-900 mb-1">
-                    Sports with completely hidden coaches:
-                  </h5>
-                  <p className="text-sm text-red-700 ml-3">
-                    {validationWarnings.hiddenCoaches.join(", ")}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Show Email</Label>
+                  <Select
+                    value={
+                      staff.canShowEmail === null
+                        ? "null"
+                        : staff.canShowEmail.toString()
+                    }
+                    onValueChange={(value) =>
+                      updateStaffVisibility(
+                        sportIndex,
+                        staffIndex,
+                        "canShowEmail",
+                        value === "null" ? null : value === "true",
+                      )
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="null">Not Set (null)</SelectItem>
+                      <SelectItem value="true">Visible (true)</SelectItem>
+                      <SelectItem value="false">Hidden (false)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-gray-500">
+                    Display email contact information
                   </p>
                 </div>
-              )}
 
-              {validationWarnings.inactiveCoaches?.length > 0 && (
-                <div>
-                  <h5 className="font-medium text-red-900 mb-1">
-                    Sports with inactive coaches:
-                  </h5>
-                  <p className="text-sm text-red-700 ml-3">
-                    {validationWarnings.inactiveCoaches.join(", ")}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">
+                    Show Phone Number
+                  </Label>
+                  <Select
+                    value={
+                      staff.canShowPhoneNumber === null
+                        ? "null"
+                        : staff.canShowPhoneNumber.toString()
+                    }
+                    onValueChange={(value) =>
+                      updateStaffVisibility(
+                        sportIndex,
+                        staffIndex,
+                        "canShowPhoneNumber",
+                        value === "null" ? null : value === "true",
+                      )
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="null">Not Set (null)</SelectItem>
+                      <SelectItem value="true">Visible (true)</SelectItem>
+                      <SelectItem value="false">Hidden (false)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-gray-500">
+                    Display phone contact information
                   </p>
                 </div>
-              )}
+
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Staff Active</Label>
+                  <Select
+                    value={
+                      staff.staffActive === null
+                        ? "null"
+                        : staff.staffActive.toString()
+                    }
+                    onValueChange={(value) =>
+                      updateStaffVisibility(
+                        sportIndex,
+                        staffIndex,
+                        "staffActive",
+                        value === "null" ? null : value === "true",
+                      )
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="null">Not Set (null)</SelectItem>
+                      <SelectItem value="true">Active (true)</SelectItem>
+                      <SelectItem value="false">Inactive (false)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-gray-500">
+                    Mark staff member as currently active
+                  </p>
+                </div>
+              </div>
             </div>
-
-            <div className="flex justify-end gap-3 pt-4 border-t">
-              <Button
-                onClick={handleValidationCancel}
-                variant="outline"
-                size="sm"
-              >
-                Stay Here
-              </Button>
-              <Button
-                onClick={handleValidationProceed}
-                variant="destructive"
-                size="sm"
-              >
-                Proceed Anyway
+            <div className="flex justify-end pt-4 border-t">
+              <Button onClick={() => toggleDialog(dialogKey)} size="sm">
+                Done
               </Button>
             </div>
           </div>
@@ -1225,7 +1250,7 @@ Return only the JSON array, no other text.`;
                         <th className="text-left p-3 font-semibold">
                           Last Name
                         </th>
-                        <th className="text-left p-3 font-semibold">Contact</th>
+                        <th className="text-left p-3 font-semibold">Email</th>
                         <th className="text-left p-3 font-semibold">Phone</th>
                         <th className="text-left p-3 font-semibold">Actions</th>
                       </tr>
@@ -1280,7 +1305,6 @@ Return only the JSON array, no other text.`;
                                           : "C"}
                                     </span>
                                   </div>
-
                                   {/* Stacked Preset Buttons */}
                                   <div className="flex flex-col gap-1">
                                     <Button
@@ -1344,7 +1368,6 @@ Return only the JSON array, no other text.`;
                                       <Settings className="h-3 w-3" />
                                     </Button>
                                   </div>
-
                                   {/* Custom Settings Dialog */}
                                   <Dialog
                                     isOpen={openDialogs[dialogKey]}
@@ -1438,12 +1461,12 @@ Return only the JSON array, no other text.`;
                                         <label className="flex items-center gap-3 p-2 rounded hover:bg-gray-50">
                                           <input
                                             type="checkbox"
-                                            checked={staff.canShowContact}
+                                            checked={staff.canShowEmail}
                                             onChange={(e) =>
                                               updateStaffVisibility(
                                                 sportIndex,
                                                 staffIndex,
-                                                "canShowContact",
+                                                "canShowEmail",
                                                 e.target.checked,
                                               )
                                             }
@@ -1451,11 +1474,33 @@ Return only the JSON array, no other text.`;
                                           />
                                           <div>
                                             <span className="text-sm font-medium">
-                                              Show Contact
+                                              Show Email
                                             </span>
                                             <p className="text-xs text-gray-500">
-                                              Display email and phone contact
-                                              information
+                                              Display email contact information
+                                            </p>
+                                          </div>
+                                        </label>
+                                        <label className="flex items-center gap-3 p-2 rounded hover:bg-gray-50">
+                                          <input
+                                            type="checkbox"
+                                            checked={staff.canShowPhoneNumber}
+                                            onChange={(e) =>
+                                              updateStaffVisibility(
+                                                sportIndex,
+                                                staffIndex,
+                                                "canShowPhoneNumber",
+                                                e.target.checked,
+                                              )
+                                            }
+                                            className="rounded h-4 w-4"
+                                          />
+                                          <div>
+                                            <span className="text-sm font-medium">
+                                              Show Phone Number
+                                            </span>
+                                            <p className="text-xs text-gray-500">
+                                              Display phone contact information
                                             </p>
                                           </div>
                                         </label>

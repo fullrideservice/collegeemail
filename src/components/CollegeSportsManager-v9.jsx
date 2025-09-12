@@ -14,108 +14,17 @@ import {
   Settings,
   Check,
 } from "lucide-react";
-
-const Button = ({
-  onClick,
-  disabled,
-  variant = "default",
-  size = "default",
-  className = "",
-  children,
-}) => {
-  const baseClasses =
-    "inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-background";
-
-  const variants = {
-    default:
-      "bg-primary text-primary-foreground hover:bg-primary/90 bg-blue-600 text-white hover:bg-blue-700",
-    destructive:
-      "bg-destructive text-destructive-foreground hover:bg-destructive/90 bg-red-600 text-white hover:bg-red-700",
-    outline:
-      "border border-input hover:bg-accent hover:text-accent-foreground border-gray-300 hover:bg-gray-50",
-    secondary:
-      "bg-secondary text-secondary-foreground hover:bg-secondary/80 bg-gray-100 text-gray-900 hover:bg-gray-200",
-    ghost: "hover:bg-accent hover:text-accent-foreground hover:bg-gray-100",
-    link: "underline-offset-4 hover:underline text-primary text-blue-600",
-    success: "bg-green-600 text-white hover:bg-green-700",
-    warning: "bg-yellow-600 text-white hover:bg-yellow-700",
-  };
-
-  const sizes = {
-    default: "h-10 py-2 px-4",
-    sm: "h-9 px-3 rounded-md",
-    lg: "h-11 px-8 rounded-md",
-    icon: "h-10 w-10",
-    xs: "h-8 px-2 text-xs",
-  };
-
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      className={`${baseClasses} ${variants[variant]} ${sizes[size]} ${className}`}
-    >
-      {children}
-    </button>
-  );
-};
-
-const Input = ({
-  value,
-  onChange,
-  placeholder,
-  className = "",
-  error,
-  ...props
-}) => (
-  <div className="w-full">
-    <input
-      type="text"
-      value={value}
-      onChange={onChange}
-      placeholder={placeholder}
-      className={`flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${
-        error
-          ? "border-red-500 focus:border-red-500 focus:ring-red-500"
-          : "border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-      } ${className}`}
-      {...props}
-    />
-    {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
-  </div>
-);
-
-const Label = ({ children, className = "" }) => (
-  <label
-    className={`text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 ${className}`}
-  >
-    {children}
-  </label>
-);
-
-const Card = ({ children, className = "" }) => (
-  <div
-    className={`rounded-lg border bg-card text-card-foreground shadow-sm bg-white border-gray-200 ${className}`}
-  >
-    {children}
-  </div>
-);
-
-const CardHeader = ({ children, className = "" }) => (
-  <div className={`flex flex-col space-y-1.5 p-6 ${className}`}>{children}</div>
-);
-
-const CardTitle = ({ children, className = "" }) => (
-  <h3
-    className={`text-lg font-semibold leading-none tracking-tight ${className}`}
-  >
-    {children}
-  </h3>
-);
-
-const CardContent = ({ children, className = "" }) => (
-  <div className={`p-6 pt-0 ${className}`}>{children}</div>
-);
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  SelectItem,
+  Select,
+  SelectContent,
+  SelectTrigger,
+  SelectValue,
+} from "@radix-ui/react-select";
 
 // Dialog component
 const Dialog = ({ isOpen, onClose, children }) => {
@@ -259,12 +168,13 @@ const CollegeSportsManager = () => {
           hasInactiveCoaches = true;
         }
 
-        // Define visibility fields
+        // Define visibility fields - updated to use new field names
         const visibilityFields = [
           staff.canShowStaffUser,
           staff.canShowTitle,
           staff.canShowName,
-          staff.canShowContact,
+          staff.canShowEmail,
+          staff.canShowPhoneNumber,
           staff.staffActive,
         ];
 
@@ -368,7 +278,7 @@ const CollegeSportsManager = () => {
     const model = "gemini-2.0-flash-exp";
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${API_KEY}`;
 
-    const prompt = `You are a helpful assistant that extracts staff information from a given text. The user will provide a block of text containing staff names, roles, emails, and phone numbers. Your task is to extract this information and format it as a JSON array of objects. Each object should have the properties 'staffTitle', 'staffFirstName', 'staffMiddleName', 'staffLastName', 'staffEmail', 'staffPhoneNumber'. The 'staffPhoneNumber' should be formatted as "(123) 456-7890". If a piece of information is not present, use null.
+    const prompt = `You are a helpful assistant that extracts staff information from a given text. The user will provide a block of text containing staff names, roles, emails, and phone numbers. Your task is to extract this information and format it as a JSON array of objects. Each object should have the properties 'staffTitle', 'staffFirstName', 'staffMiddleName', 'staffLastName', 'staffEmail', 'staffPhoneNumber'. The 'staffPhoneNumber' should be formatted as "123-456-7890". If a piece of information is not present, use null.
 
 Parse the following text and extract staff information into a JSON array with these exact fields:
 [
@@ -378,7 +288,7 @@ Parse the following text and extract staff information into a JSON array with th
   "staffMiddleName": "extracted middle name or null",
   "staffLastName": "extracted last name or null",
   "staffEmail": "extracted email or null",
-  "staffPhoneNumber": "extracted phone number formatted as (123) 456-7890 or null"
+  "staffPhoneNumber": "extracted phone number formatted as 123-456-7890 or null"
 }
 ]
 
@@ -530,7 +440,8 @@ Return only the JSON array, no other text.`;
       canShowStaffUser: true,
       canShowTitle: true,
       canShowName: true,
-      canShowContact: true,
+      canShowEmail: true,
+      canShowPhoneNumber: true,
       staffLinkOrDirectoryLink: null,
       staffActive: true,
     };
@@ -557,18 +468,22 @@ Return only the JSON array, no other text.`;
       staff.canShowStaffUser = true;
       staff.canShowTitle = true;
       staff.canShowName = true;
-      staff.canShowContact = true;
+      staff.canShowEmail = true;
+      staff.canShowPhoneNumber = true;
       staff.staffActive = true;
     } else if (preset === "hidden") {
       staff.canShowStaffUser = false;
       staff.canShowTitle = false;
       staff.canShowName = false;
-      staff.canShowContact = false;
+      staff.canShowEmail = false;
+      staff.canShowPhoneNumber = false;
+      staff.staffActive = null;
     }
 
     setColleges(updatedColleges);
   };
 
+  // Update staff visibility field
   // Update staff visibility field
   const updateStaffVisibility = (sportIndex, staffIndex, field, value) => {
     const updatedColleges = [...colleges];
@@ -588,13 +503,14 @@ Return only the JSON array, no other text.`;
       staff.canShowStaffUser,
       staff.canShowTitle,
       staff.canShowName,
-      staff.canShowContact,
+      staff.canShowEmail,
+      staff.canShowPhoneNumber,
       staff.staffActive,
     ];
 
     const allVisible = visibleFields.every((field) => field === true);
     const allHidden = visibleFields
-      .slice(0, 4)
+      .slice(0, 5)
       .every((field) => field === false);
 
     if (allVisible) return "visible";
@@ -711,20 +627,7 @@ Return only the JSON array, no other text.`;
 
   // Get sport-specific styling
   const getSportColor = (sport) => {
-    const colors = {
-      Baseball: "bg-green-50 border-green-200",
-      Football: "bg-blue-50 border-blue-200",
-      "Men's Basketball": "bg-orange-50 border-orange-200",
-      "Women's Basketball": "bg-purple-50 border-purple-200",
-      "Men's Cross Country": "bg-yellow-50 border-yellow-200",
-      "Women's Cross Country": "bg-pink-50 border-pink-200",
-      "Men's Soccer": "bg-emerald-50 border-emerald-200",
-      "Women's Soccer": "bg-teal-50 border-teal-200",
-      "Track and Field": "bg-indigo-50 border-indigo-200",
-      Volleyball: "bg-rose-50 border-rose-200",
-      Swimming: "bg-cyan-50 border-cyan-200",
-      Tennis: "bg-lime-50 border-lime-200",
-    };
+    const colors = {};
     return colors[sport] || "bg-gray-50 border-gray-200";
   };
 
@@ -933,7 +836,7 @@ Return only the JSON array, no other text.`;
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
             <div>
-              <Label>State</Label>
+              <Label className="mb-2">State</Label>
               <Input
                 value={currentCollege?.stateProvinceNCAA || ""}
                 onChange={(e) =>
@@ -943,7 +846,7 @@ Return only the JSON array, no other text.`;
               />
             </div>
             <div>
-              <Label>NCAA Division</Label>
+              <Label className="mb-2">NCAA Division</Label>
               <Input
                 value={currentCollege?.divisionNCAA || ""}
                 onChange={(e) =>
@@ -953,7 +856,7 @@ Return only the JSON array, no other text.`;
               />
             </div>
             <div>
-              <Label>College Website</Label>
+              <Label className="mb-2">College Website</Label>
               <Input
                 value={currentCollege?.collegeWebsiteUrl || ""}
                 onChange={(e) =>
@@ -963,7 +866,7 @@ Return only the JSON array, no other text.`;
               />
             </div>
             <div>
-              <Label>Athletic Website</Label>
+              <Label className="mb-2">Athletic Website</Label>
               <Input
                 value={currentCollege?.athleticWebsiteUrl || ""}
                 onChange={(e) =>
@@ -987,90 +890,98 @@ Return only the JSON array, no other text.`;
         <Dialog isOpen={showValidationDialog} onClose={handleValidationCancel}>
           <div className="space-y-4">
             <div className="pr-8">
-              <h4 className="font-semibold text-lg text-red-800 flex items-center gap-2">
-                <div className="w-6 h-6 bg-red-100 rounded-full flex items-center justify-center">
-                  <div className="w-3 h-3 bg-red-600 rounded-full"></div>
-                </div>
-                Data Quality Warnings
+              <h4 className="font-semibold text-lg text-yellow-800">
+                Validation Warnings
               </h4>
               <p className="text-sm text-gray-600 mt-1">
-                Issues found with{" "}
-                {currentCollege?.officialName || "current college"}. Review or
-                proceed anyway.
+                The following issues were found in the current college:
               </p>
             </div>
-
-            <div className="border border-red-200 rounded-lg p-4 bg-red-50 space-y-3 max-h-80 overflow-y-auto">
+            <div className="space-y-3">
               {validationWarnings.noCoaches?.length > 0 && (
-                <div>
-                  <h5 className="font-medium text-red-900 mb-1">
-                    Sports with no coaches:
-                  </h5>
-                  <p className="text-sm text-red-700 ml-3">
-                    {validationWarnings.noCoaches.join(", ")}
+                <div className="p-3 bg-red-50 border border-red-200 rounded">
+                  <h5 className="font-medium text-red-800">No Coaches</h5>
+                  <p className="text-sm text-red-600">
+                    These sports have no staff members:
                   </p>
+                  <ul className="text-sm text-red-600 mt-1">
+                    {validationWarnings.noCoaches.map((sport, i) => (
+                      <li key={i}>• {sport}</li>
+                    ))}
+                  </ul>
                 </div>
               )}
 
               {validationWarnings.noEmails?.length > 0 && (
-                <div>
-                  <h5 className="font-medium text-red-900 mb-1">
-                    Sports with coaches missing emails:
+                <div className="p-3 bg-orange-50 border border-orange-200 rounded">
+                  <h5 className="font-medium text-orange-800">
+                    No Email Addresses
                   </h5>
-                  <p className="text-sm text-red-700 ml-3">
-                    {validationWarnings.noEmails.join(", ")}
+                  <p className="text-sm text-orange-600">
+                    These sports have staff but no email addresses:
                   </p>
+                  <ul className="text-sm text-orange-600 mt-1">
+                    {validationWarnings.noEmails.map((sport, i) => (
+                      <li key={i}>• {sport}</li>
+                    ))}
+                  </ul>
                 </div>
               )}
 
               {validationWarnings.customVisibility?.length > 0 && (
-                <div>
-                  <h5 className="font-medium text-red-900 mb-1">
-                    Sports with coaches using custom visibility:
+                <div className="p-3 bg-yellow-50 border border-yellow-200 rounded">
+                  <h5 className="font-medium text-yellow-800">
+                    Custom Visibility
                   </h5>
-                  <p className="text-sm text-red-700 ml-3">
-                    {validationWarnings.customVisibility.join(", ")}
+                  <p className="text-sm text-yellow-600">
+                    These sports have staff with custom visibility settings:
                   </p>
+                  <ul className="text-sm text-yellow-600 mt-1">
+                    {validationWarnings.customVisibility.map((sport, i) => (
+                      <li key={i}>• {sport}</li>
+                    ))}
+                  </ul>
                 </div>
               )}
 
               {validationWarnings.hiddenCoaches?.length > 0 && (
-                <div>
-                  <h5 className="font-medium text-red-900 mb-1">
-                    Sports with completely hidden coaches:
-                  </h5>
-                  <p className="text-sm text-red-700 ml-3">
-                    {validationWarnings.hiddenCoaches.join(", ")}
+                <div className="p-3 bg-gray-50 border border-gray-200 rounded">
+                  <h5 className="font-medium text-gray-800">Hidden Staff</h5>
+                  <p className="text-sm text-gray-600">
+                    These sports have completely hidden staff members:
                   </p>
+                  <ul className="text-sm text-gray-600 mt-1">
+                    {validationWarnings.hiddenCoaches.map((sport, i) => (
+                      <li key={i}>• {sport}</li>
+                    ))}
+                  </ul>
                 </div>
               )}
 
               {validationWarnings.inactiveCoaches?.length > 0 && (
-                <div>
-                  <h5 className="font-medium text-red-900 mb-1">
-                    Sports with inactive coaches:
-                  </h5>
-                  <p className="text-sm text-red-700 ml-3">
-                    {validationWarnings.inactiveCoaches.join(", ")}
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded">
+                  <h5 className="font-medium text-blue-800">Inactive Staff</h5>
+                  <p className="text-sm text-blue-600">
+                    These sports have inactive staff members:
                   </p>
+                  <ul className="text-sm text-blue-600 mt-1">
+                    {validationWarnings.inactiveCoaches.map((sport, i) => (
+                      <li key={i}>• {sport}</li>
+                    ))}
+                  </ul>
                 </div>
               )}
             </div>
-
-            <div className="flex justify-end gap-3 pt-4 border-t">
+            <div className="flex justify-end gap-2 pt-4 border-t">
               <Button
                 onClick={handleValidationCancel}
                 variant="outline"
                 size="sm"
               >
-                Stay Here
+                Cancel
               </Button>
-              <Button
-                onClick={handleValidationProceed}
-                variant="destructive"
-                size="sm"
-              >
-                Proceed Anyway
+              <Button onClick={handleValidationProceed} size="sm">
+                Continue Anyway
               </Button>
             </div>
           </div>
@@ -1225,7 +1136,7 @@ Return only the JSON array, no other text.`;
                         <th className="text-left p-3 font-semibold">
                           Last Name
                         </th>
-                        <th className="text-left p-3 font-semibold">Contact</th>
+                        <th className="text-left p-3 font-semibold">Email</th>
                         <th className="text-left p-3 font-semibold">Phone</th>
                         <th className="text-left p-3 font-semibold">Actions</th>
                       </tr>
@@ -1280,7 +1191,6 @@ Return only the JSON array, no other text.`;
                                           : "C"}
                                     </span>
                                   </div>
-
                                   {/* Stacked Preset Buttons */}
                                   <div className="flex flex-col gap-1">
                                     <Button
@@ -1344,7 +1254,6 @@ Return only the JSON array, no other text.`;
                                       <Settings className="h-3 w-3" />
                                     </Button>
                                   </div>
-
                                   {/* Custom Settings Dialog */}
                                   <Dialog
                                     isOpen={openDialogs[dialogKey]}
@@ -1362,127 +1271,459 @@ Return only the JSON array, no other text.`;
                                             "this staff member"}
                                         </p>
                                       </div>
-                                      <div className="space-y-3">
-                                        <label className="flex items-center gap-3 p-2 rounded hover:bg-gray-50">
-                                          <input
-                                            type="checkbox"
-                                            checked={staff.canShowStaffUser}
-                                            onChange={(e) =>
-                                              updateStaffVisibility(
-                                                sportIndex,
-                                                staffIndex,
-                                                "canShowStaffUser",
-                                                e.target.checked,
-                                              )
-                                            }
-                                            className="rounded h-4 w-4"
-                                          />
-                                          <div>
-                                            <span className="text-sm font-medium">
-                                              Show Staff User
-                                            </span>
-                                            <p className="text-xs text-gray-500">
-                                              Display this staff member in user
-                                              listings
-                                            </p>
+                                      <div className="space-y-4">
+                                        <div className="space-y-3">
+                                          <Label className="text-sm font-medium">
+                                            Show Staff User
+                                          </Label>
+                                          <div className="flex gap-6">
+                                            <label className="flex items-center gap-2">
+                                              <input
+                                                type="radio"
+                                                name={`canShowStaffUser-${sportIndex}-${staffIndex}`}
+                                                checked={
+                                                  staff.canShowStaffUser ===
+                                                  null
+                                                }
+                                                onChange={() =>
+                                                  updateStaffVisibility(
+                                                    sportIndex,
+                                                    staffIndex,
+                                                    "canShowStaffUser",
+                                                    null,
+                                                  )
+                                                }
+                                                className="h-4 w-4"
+                                              />
+                                              <span className="text-sm">
+                                                Not Set (null)
+                                              </span>
+                                            </label>
+                                            <label className="flex items-center gap-2">
+                                              <input
+                                                type="radio"
+                                                name={`canShowStaffUser-${sportIndex}-${staffIndex}`}
+                                                checked={
+                                                  staff.canShowStaffUser ===
+                                                  true
+                                                }
+                                                onChange={() =>
+                                                  updateStaffVisibility(
+                                                    sportIndex,
+                                                    staffIndex,
+                                                    "canShowStaffUser",
+                                                    true,
+                                                  )
+                                                }
+                                                className="h-4 w-4"
+                                              />
+                                              <span className="text-sm">
+                                                Visible (true)
+                                              </span>
+                                            </label>
+                                            <label className="flex items-center gap-2">
+                                              <input
+                                                type="radio"
+                                                name={`canShowStaffUser-${sportIndex}-${staffIndex}`}
+                                                checked={
+                                                  staff.canShowStaffUser ===
+                                                  false
+                                                }
+                                                onChange={() =>
+                                                  updateStaffVisibility(
+                                                    sportIndex,
+                                                    staffIndex,
+                                                    "canShowStaffUser",
+                                                    false,
+                                                  )
+                                                }
+                                                className="h-4 w-4"
+                                              />
+                                              <span className="text-sm">
+                                                Hidden (false)
+                                              </span>
+                                            </label>
                                           </div>
-                                        </label>
-                                        <label className="flex items-center gap-3 p-2 rounded hover:bg-gray-50">
-                                          <input
-                                            type="checkbox"
-                                            checked={staff.canShowTitle}
-                                            onChange={(e) =>
-                                              updateStaffVisibility(
-                                                sportIndex,
-                                                staffIndex,
-                                                "canShowTitle",
-                                                e.target.checked,
-                                              )
-                                            }
-                                            className="rounded h-4 w-4"
-                                          />
-                                          <div>
-                                            <span className="text-sm font-medium">
-                                              Show Title
-                                            </span>
-                                            <p className="text-xs text-gray-500">
-                                              Display the staff member's
-                                              title/position
-                                            </p>
+                                          <p className="text-xs text-gray-500">
+                                            Display this staff member in user
+                                            listings
+                                          </p>
+                                        </div>
+
+                                        <div className="space-y-3">
+                                          <Label className="text-sm font-medium">
+                                            Show Title
+                                          </Label>
+                                          <div className="flex gap-6">
+                                            <label className="flex items-center gap-2">
+                                              <input
+                                                type="radio"
+                                                name={`canShowTitle-${sportIndex}-${staffIndex}`}
+                                                checked={
+                                                  staff.canShowTitle === null
+                                                }
+                                                onChange={() =>
+                                                  updateStaffVisibility(
+                                                    sportIndex,
+                                                    staffIndex,
+                                                    "canShowTitle",
+                                                    null,
+                                                  )
+                                                }
+                                                className="h-4 w-4"
+                                              />
+                                              <span className="text-sm">
+                                                Not Set (null)
+                                              </span>
+                                            </label>
+                                            <label className="flex items-center gap-2">
+                                              <input
+                                                type="radio"
+                                                name={`canShowTitle-${sportIndex}-${staffIndex}`}
+                                                checked={
+                                                  staff.canShowTitle === true
+                                                }
+                                                onChange={() =>
+                                                  updateStaffVisibility(
+                                                    sportIndex,
+                                                    staffIndex,
+                                                    "canShowTitle",
+                                                    true,
+                                                  )
+                                                }
+                                                className="h-4 w-4"
+                                              />
+                                              <span className="text-sm">
+                                                Visible (true)
+                                              </span>
+                                            </label>
+                                            <label className="flex items-center gap-2">
+                                              <input
+                                                type="radio"
+                                                name={`canShowTitle-${sportIndex}-${staffIndex}`}
+                                                checked={
+                                                  staff.canShowTitle === false
+                                                }
+                                                onChange={() =>
+                                                  updateStaffVisibility(
+                                                    sportIndex,
+                                                    staffIndex,
+                                                    "canShowTitle",
+                                                    false,
+                                                  )
+                                                }
+                                                className="h-4 w-4"
+                                              />
+                                              <span className="text-sm">
+                                                Hidden (false)
+                                              </span>
+                                            </label>
                                           </div>
-                                        </label>
-                                        <label className="flex items-center gap-3 p-2 rounded hover:bg-gray-50">
-                                          <input
-                                            type="checkbox"
-                                            checked={staff.canShowName}
-                                            onChange={(e) =>
-                                              updateStaffVisibility(
-                                                sportIndex,
-                                                staffIndex,
-                                                "canShowName",
-                                                e.target.checked,
-                                              )
-                                            }
-                                            className="rounded h-4 w-4"
-                                          />
-                                          <div>
-                                            <span className="text-sm font-medium">
-                                              Show Name
-                                            </span>
-                                            <p className="text-xs text-gray-500">
-                                              Display the staff member's full
-                                              name
-                                            </p>
+                                          <p className="text-xs text-gray-500">
+                                            Display the staff member's
+                                            title/position
+                                          </p>
+                                        </div>
+
+                                        <div className="space-y-3">
+                                          <Label className="text-sm font-medium">
+                                            Show Name
+                                          </Label>
+                                          <div className="flex gap-6">
+                                            <label className="flex items-center gap-2">
+                                              <input
+                                                type="radio"
+                                                name={`canShowName-${sportIndex}-${staffIndex}`}
+                                                checked={
+                                                  staff.canShowName === null
+                                                }
+                                                onChange={() =>
+                                                  updateStaffVisibility(
+                                                    sportIndex,
+                                                    staffIndex,
+                                                    "canShowName",
+                                                    null,
+                                                  )
+                                                }
+                                                className="h-4 w-4"
+                                              />
+                                              <span className="text-sm">
+                                                Not Set (null)
+                                              </span>
+                                            </label>
+                                            <label className="flex items-center gap-2">
+                                              <input
+                                                type="radio"
+                                                name={`canShowName-${sportIndex}-${staffIndex}`}
+                                                checked={
+                                                  staff.canShowName === true
+                                                }
+                                                onChange={() =>
+                                                  updateStaffVisibility(
+                                                    sportIndex,
+                                                    staffIndex,
+                                                    "canShowName",
+                                                    true,
+                                                  )
+                                                }
+                                                className="h-4 w-4"
+                                              />
+                                              <span className="text-sm">
+                                                Visible (true)
+                                              </span>
+                                            </label>
+                                            <label className="flex items-center gap-2">
+                                              <input
+                                                type="radio"
+                                                name={`canShowName-${sportIndex}-${staffIndex}`}
+                                                checked={
+                                                  staff.canShowName === false
+                                                }
+                                                onChange={() =>
+                                                  updateStaffVisibility(
+                                                    sportIndex,
+                                                    staffIndex,
+                                                    "canShowName",
+                                                    false,
+                                                  )
+                                                }
+                                                className="h-4 w-4"
+                                              />
+                                              <span className="text-sm">
+                                                Hidden (false)
+                                              </span>
+                                            </label>
                                           </div>
-                                        </label>
-                                        <label className="flex items-center gap-3 p-2 rounded hover:bg-gray-50">
-                                          <input
-                                            type="checkbox"
-                                            checked={staff.canShowContact}
-                                            onChange={(e) =>
-                                              updateStaffVisibility(
-                                                sportIndex,
-                                                staffIndex,
-                                                "canShowContact",
-                                                e.target.checked,
-                                              )
-                                            }
-                                            className="rounded h-4 w-4"
-                                          />
-                                          <div>
-                                            <span className="text-sm font-medium">
-                                              Show Contact
-                                            </span>
-                                            <p className="text-xs text-gray-500">
-                                              Display email and phone contact
-                                              information
-                                            </p>
+                                          <p className="text-xs text-gray-500">
+                                            Display the staff member's full name
+                                          </p>
+                                        </div>
+
+                                        <div className="space-y-3">
+                                          <Label className="text-sm font-medium">
+                                            Show Email
+                                          </Label>
+                                          <div className="flex gap-6">
+                                            <label className="flex items-center gap-2">
+                                              <input
+                                                type="radio"
+                                                name={`canShowEmail-${sportIndex}-${staffIndex}`}
+                                                checked={
+                                                  staff.canShowEmail === null
+                                                }
+                                                onChange={() =>
+                                                  updateStaffVisibility(
+                                                    sportIndex,
+                                                    staffIndex,
+                                                    "canShowEmail",
+                                                    null,
+                                                  )
+                                                }
+                                                className="h-4 w-4"
+                                              />
+                                              <span className="text-sm">
+                                                Not Set (null)
+                                              </span>
+                                            </label>
+                                            <label className="flex items-center gap-2">
+                                              <input
+                                                type="radio"
+                                                name={`canShowEmail-${sportIndex}-${staffIndex}`}
+                                                checked={
+                                                  staff.canShowEmail === true
+                                                }
+                                                onChange={() =>
+                                                  updateStaffVisibility(
+                                                    sportIndex,
+                                                    staffIndex,
+                                                    "canShowEmail",
+                                                    true,
+                                                  )
+                                                }
+                                                className="h-4 w-4"
+                                              />
+                                              <span className="text-sm">
+                                                Visible (true)
+                                              </span>
+                                            </label>
+                                            <label className="flex items-center gap-2">
+                                              <input
+                                                type="radio"
+                                                name={`canShowEmail-${sportIndex}-${staffIndex}`}
+                                                checked={
+                                                  staff.canShowEmail === false
+                                                }
+                                                onChange={() =>
+                                                  updateStaffVisibility(
+                                                    sportIndex,
+                                                    staffIndex,
+                                                    "canShowEmail",
+                                                    false,
+                                                  )
+                                                }
+                                                className="h-4 w-4"
+                                              />
+                                              <span className="text-sm">
+                                                Hidden (false)
+                                              </span>
+                                            </label>
                                           </div>
-                                        </label>
-                                        <label className="flex items-center gap-3 p-2 rounded hover:bg-gray-50">
-                                          <input
-                                            type="checkbox"
-                                            checked={staff.staffActive}
-                                            onChange={(e) =>
-                                              updateStaffVisibility(
-                                                sportIndex,
-                                                staffIndex,
-                                                "staffActive",
-                                                e.target.checked,
-                                              )
-                                            }
-                                            className="rounded h-4 w-4"
-                                          />
-                                          <div>
-                                            <span className="text-sm font-medium">
-                                              Staff Active
-                                            </span>
-                                            <p className="text-xs text-gray-500">
-                                              Mark staff member as currently
-                                              active
-                                            </p>
+                                          <p className="text-xs text-gray-500">
+                                            Display email contact information
+                                          </p>
+                                        </div>
+
+                                        <div className="space-y-3">
+                                          <Label className="text-sm font-medium">
+                                            Show Phone Number
+                                          </Label>
+                                          <div className="flex gap-6">
+                                            <label className="flex items-center gap-2">
+                                              <input
+                                                type="radio"
+                                                name={`canShowPhoneNumber-${sportIndex}-${staffIndex}`}
+                                                checked={
+                                                  staff.canShowPhoneNumber ===
+                                                  null
+                                                }
+                                                onChange={() =>
+                                                  updateStaffVisibility(
+                                                    sportIndex,
+                                                    staffIndex,
+                                                    "canShowPhoneNumber",
+                                                    null,
+                                                  )
+                                                }
+                                                className="h-4 w-4"
+                                              />
+                                              <span className="text-sm">
+                                                Not Set (null)
+                                              </span>
+                                            </label>
+                                            <label className="flex items-center gap-2">
+                                              <input
+                                                type="radio"
+                                                name={`canShowPhoneNumber-${sportIndex}-${staffIndex}`}
+                                                checked={
+                                                  staff.canShowPhoneNumber ===
+                                                  true
+                                                }
+                                                onChange={() =>
+                                                  updateStaffVisibility(
+                                                    sportIndex,
+                                                    staffIndex,
+                                                    "canShowPhoneNumber",
+                                                    true,
+                                                  )
+                                                }
+                                                className="h-4 w-4"
+                                              />
+                                              <span className="text-sm">
+                                                Visible (true)
+                                              </span>
+                                            </label>
+                                            <label className="flex items-center gap-2">
+                                              <input
+                                                type="radio"
+                                                name={`canShowPhoneNumber-${sportIndex}-${staffIndex}`}
+                                                checked={
+                                                  staff.canShowPhoneNumber ===
+                                                  false
+                                                }
+                                                onChange={() =>
+                                                  updateStaffVisibility(
+                                                    sportIndex,
+                                                    staffIndex,
+                                                    "canShowPhoneNumber",
+                                                    false,
+                                                  )
+                                                }
+                                                className="h-4 w-4"
+                                              />
+                                              <span className="text-sm">
+                                                Hidden (false)
+                                              </span>
+                                            </label>
                                           </div>
-                                        </label>
+                                          <p className="text-xs text-gray-500">
+                                            Display phone contact information
+                                          </p>
+                                        </div>
+
+                                        <div className="space-y-3">
+                                          <Label className="text-sm font-medium">
+                                            Staff Active
+                                          </Label>
+                                          <div className="flex gap-6">
+                                            <label className="flex items-center gap-2">
+                                              <input
+                                                type="radio"
+                                                name={`staffActive-${sportIndex}-${staffIndex}`}
+                                                checked={
+                                                  staff.staffActive === null
+                                                }
+                                                onChange={() =>
+                                                  updateStaffVisibility(
+                                                    sportIndex,
+                                                    staffIndex,
+                                                    "staffActive",
+                                                    null,
+                                                  )
+                                                }
+                                                className="h-4 w-4"
+                                              />
+                                              <span className="text-sm">
+                                                Not Set (null)
+                                              </span>
+                                            </label>
+                                            <label className="flex items-center gap-2">
+                                              <input
+                                                type="radio"
+                                                name={`staffActive-${sportIndex}-${staffIndex}`}
+                                                checked={
+                                                  staff.staffActive === true
+                                                }
+                                                onChange={() =>
+                                                  updateStaffVisibility(
+                                                    sportIndex,
+                                                    staffIndex,
+                                                    "staffActive",
+                                                    true,
+                                                  )
+                                                }
+                                                className="h-4 w-4"
+                                              />
+                                              <span className="text-sm">
+                                                Active (true)
+                                              </span>
+                                            </label>
+                                            <label className="flex items-center gap-2">
+                                              <input
+                                                type="radio"
+                                                name={`staffActive-${sportIndex}-${staffIndex}`}
+                                                checked={
+                                                  staff.staffActive === false
+                                                }
+                                                onChange={() =>
+                                                  updateStaffVisibility(
+                                                    sportIndex,
+                                                    staffIndex,
+                                                    "staffActive",
+                                                    false,
+                                                  )
+                                                }
+                                                className="h-4 w-4"
+                                              />
+                                              <span className="text-sm">
+                                                Inactive (false)
+                                              </span>
+                                            </label>
+                                          </div>
+                                          <p className="text-xs text-gray-500">
+                                            Mark staff member as currently
+                                            active
+                                          </p>
+                                        </div>
                                       </div>
                                       <div className="flex justify-end pt-4 border-t">
                                         <Button
@@ -1690,7 +1931,7 @@ Return only the JSON array, no other text.`;
                           value={bulkInputText}
                           onChange={(e) => setBulkInputText(e.target.value)}
                           placeholder="Paste staff information here (e.g., 'John Smith, Head Coach, john.smith@college.edu, (555) 123-4567')..."
-                          className="w-full h-72 p-3 border border-gray-300 rounded-md resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          className="w-full h-[400px] p-3 border border-gray-300 rounded-md resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         />
                       </div>
 
@@ -1702,7 +1943,7 @@ Return only the JSON array, no other text.`;
                           value={aiResponseText}
                           readOnly
                           placeholder="AI response will appear here..."
-                          className="w-full h-72 p-3 border border-gray-300 rounded-md resize-none bg-gray-50 text-sm"
+                          className="w-full h-[400px] p-3 border border-gray-300 rounded-md resize-none bg-gray-50 text-sm"
                         />
                       </div>
                     </div>
